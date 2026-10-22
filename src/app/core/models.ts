@@ -24,6 +24,7 @@ export interface Clinic {
   expiresAt?: string;
   enabledModules: string[];
   adminUsername?: string;
+  hasStoredPassword?: boolean;
   createdAt: string;
 }
 
@@ -54,6 +55,7 @@ export interface ClinicUser {
   qualification?: string;
   registrationNo?: string;
   consultationFee?: number;
+  hasStoredPassword?: boolean;
   roleId: { _id: string; name: string; isAdmin: boolean } | null;
 }
 

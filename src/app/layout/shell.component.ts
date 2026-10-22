@@ -32,6 +32,7 @@ import { MENU } from '../core/menu';
             <span class="dot" [class.off]="!loading.online()" [class.busy]="loading.busy()"></span>
             {{ loading.online() ? (loading.busy() ? 'Loading…' : apiHost) : 'Server unreachable' }}
           </div>
+          <a routerLink="/account/password" class="btn btn-sm btn-outline-light mt-2 w-100"><i class="bi bi-key me-1"></i>Change password</a>
           <button class="btn btn-sm btn-outline-light mt-2 w-100" (click)="auth.logout()">
             <i class="bi bi-box-arrow-left me-1"></i>Logout
           </button>

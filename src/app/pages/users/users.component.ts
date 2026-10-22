@@ -5,6 +5,7 @@ import { FormsModule } from '@angular/forms';
 import { API, errorMessage } from '../../core/api';
 import { HasPermissionDirective } from '../../core/has-permission.directive';
 import { ClinicUser, Role } from '../../core/models';
+import { AuthService } from '../../core/auth.service';
 import { LoadingService } from '../../core/loading.service';
 
 @Component({
@@ -22,25 +23,43 @@ import { LoadingService } from '../../core/loading.service';
       <div class="table-responsive">
         <table class="table table-hover mb-0">
           <thead class="table-light">
-            <tr><th>Name</th><th>Username</th><th>Role</th><th>Status</th><th>Last login</th><th class="text-end">Actions</th></tr>
+            <tr><th>Name</th><th>Username</th>@if (isAdmin()) { <th>Password</th> }<th>Role</th><th>Status</th><th>Last login</th><th class="text-end">Actions</th></tr>
           </thead>
           <tbody>
             @for (u of users(); track u._id) {
               <tr>
                 <td class="fw-semibold">{{ u.name }} @if (u.isDoctor) { <span class="badge bg-info text-dark ms-1">Doctor</span> }</td>
                 <td>{{ u.username }}</td>
+                @if (isAdmin()) {
+                  <td class="text-nowrap">
+                    @if (shown()[u._id]; as pw) {
+                      <code>{{ pw }}</code>
+                      <button class="btn btn-sm btn-link p-0 ms-1" title="Copy" (click)="copyText(pw)"><i class="bi bi-clipboard"></i></button>
+                      <button class="btn btn-sm btn-link p-0 ms-1" title="Hide" (click)="hide(u)"><i class="bi bi-eye-slash"></i></button>
+                    } @else if (u.hasStoredPassword) {
+                      <span class="text-muted">••••••••</span>
+                      <button class="btn btn-sm btn-outline-secondary py-0 ms-1" (click)="reveal(u)">Show</button>
+                    } @else {
+                      <span class="text-muted small" title="Set by the user, or set before this feature. Use Edit to set a new password you can view here.">—</span>
+                    }
+                  </td>
+                }
                 <td>{{ u.roleId?.name }}</td>
                 <td><span class="badge" [class.bg-success]="u.isActive" [class.bg-secondary]="!u.isActive">{{ u.isActive ? 'active' : 'inactive' }}</span></td>
                 <td>{{ u.lastLogin ? (u.lastLogin | date: 'medium') : '—' }}</td>
                 <td class="text-end">
                   <button *hasPermission="'users.edit'" class="btn btn-sm btn-outline-secondary me-1" (click)="openForm(u)">Edit</button>
-                  <button *hasPermission="'users.edit'" class="btn btn-sm" [class.btn-outline-danger]="u.isActive" [class.btn-outline-success]="!u.isActive" (click)="toggleActive(u)">
-                    {{ u.isActive ? 'Deactivate' : 'Activate' }}
-                  </button>
+                  @if (isAdmin()) {
+                    <button class="btn btn-sm me-1" [class.btn-outline-warning]="u.isActive" [class.btn-outline-success]="!u.isActive" (click)="toggleActive(u)">
+                      <i class="bi" [class.bi-snow]="u.isActive" [class.bi-play-circle]="!u.isActive"></i>
+                      {{ u.isActive ? 'Freeze' : 'Unfreeze' }}
+                    </button>
+                    <button class="btn btn-sm btn-outline-danger" (click)="remove(u)"><i class="bi bi-trash"></i> Delete</button>
+                  }
                 </td>
               </tr>
             } @empty {
-              <tr><td colspan="6" class="text-center text-muted py-4">@if (loading.busy()) { <span class="spinner-border spinner-border-sm me-2"></span>Loading users… } @else { No users }</td></tr>
+              <tr><td colspan="7" class="text-center text-muted py-4">@if (loading.busy()) { <span class="spinner-border spinner-border-sm me-2"></span>Loading users… } @else { No users }</td></tr>
             }
           </tbody>
         </table>
@@ -95,11 +114,65 @@ import { LoadingService } from '../../core/loading.service';
         </div>
       </div>
     }
+
+    @if (creds(); as c) {
+      <div class="modal d-block modal-backdrop-custom" tabindex="-1">
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <div class="modal-header"><h5 class="modal-title">Login details — {{ c.name }}</h5><button type="button" class="btn-close" (click)="creds.set(null)"></button></div>
+            <div class="modal-body">
+              <div class="alert alert-info py-2 small">You can see this password again later with "Show" until the user changes it themselves.</div>
+              <table class="table table-sm mb-0">
+                <tr><th>Clinic code</th><td><code>{{ auth.me()?.clinic?.code }}</code></td></tr>
+                <tr><th>Username</th><td><code>{{ c.username }}</code></td></tr>
+                <tr><th>Password</th><td><code>{{ c.password }}</code></td></tr>
+              </table>
+            </div>
+            <div class="modal-footer">
+              <button class="btn btn-outline-secondary" (click)="copyCreds(c)">{{ copied() ? 'Copied!' : 'Copy' }}</button>
+              <button class="btn btn-primary" (click)="creds.set(null)">Done</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    }
   `,
 })
 export class UsersComponent implements OnInit {
   private http = inject(HttpClient);
   loading = inject(LoadingService);
+  auth = inject(AuthService);
+
+  /** Only the clinic admin sees (and can reveal) passwords. */
+  isAdmin = () => !!this.auth.me()?.user.isAdmin;
+  shown = signal<Record<string, string>>({});
+  /** Login details shown once after an admin sets a password. */
+  creds = signal<{ name: string; username: string; password: string } | null>(null);
+  copied = signal(false);
+
+  reveal(u: ClinicUser) {
+    this.http.get<{ password: string }>(`${API}/users/${u._id}/password`).subscribe({
+      next: (r) => this.shown.update((s) => ({ ...s, [u._id]: r.password })),
+      error: (e) => this.error.set(errorMessage(e)),
+    });
+  }
+
+  hide(u: ClinicUser) {
+    this.shown.update((s) => {
+      const n = { ...s };
+      delete n[u._id];
+      return n;
+    });
+  }
+
+  copyText(text: string) {
+    navigator.clipboard?.writeText(text);
+  }
+
+  copyCreds(c: { username: string; password: string }) {
+    const code = this.auth.me()?.clinic?.code ?? '';
+    navigator.clipboard?.writeText(`Clinic code: ${code}\nUsername: ${c.username}\nPassword: ${c.password}`).then(() => this.copied.set(true));
+  }
 
   users = signal<ClinicUser[]>([]);
   roles = signal<Role[]>([]);
@@ -152,12 +225,24 @@ export class UsersComponent implements OnInit {
       next: () => {
         this.saving.set(false);
         this.showForm.set(false);
+        if (f.password) {
+          this.copied.set(false);
+          this.creds.set({ name: f.name, username: f.username, password: f.password });
+        }
         this.load();
       },
       error: (e) => {
         this.saving.set(false);
         this.formError.set(errorMessage(e));
       },
+    });
+  }
+
+  remove(u: ClinicUser) {
+    if (!confirm(`Delete the user "${u.username}"? This cannot be undone.`)) return;
+    this.http.delete(`${API}/users/${u._id}`).subscribe({
+      next: () => this.load(),
+      error: (e) => this.error.set(errorMessage(e)),
     });
   }
 

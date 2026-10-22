@@ -10,6 +10,7 @@ export const routes: Routes = [
     loadComponent: () => import('./layout/shell.component').then((m) => m.ShellComponent),
     children: [
       { path: '', pathMatch: 'full', redirectTo: 'dashboard' },
+      { path: 'account/password', loadComponent: () => import('./pages/account/change-password.component').then((m) => m.ChangePasswordComponent) },
       { path: 'dashboard', loadComponent: () => import('./pages/dashboard/dashboard.component').then((m) => m.DashboardComponent) },
       {
         path: 'admin/clinics',

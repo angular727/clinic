@@ -30,6 +30,7 @@ import { LoadingService } from '../../core/loading.service';
               <th>Name</th>
               <th>Clinic code</th>
               <th>Admin username</th>
+              <th>Admin password</th>
               <th>Status</th>
               <th>Expires</th>
               <th>Optional modules</th>
@@ -42,6 +43,18 @@ import { LoadingService } from '../../core/loading.service';
                 <td class="fw-semibold">{{ c.name }}</td>
                 <td><code>{{ c.code }}</code></td>
                 <td><code>{{ c.adminUsername || '—' }}</code></td>
+                <td class="text-nowrap">
+                  @if (shown()[c._id]; as pw) {
+                    <code>{{ pw }}</code>
+                    <button class="btn btn-sm btn-link p-0 ms-1" title="Copy" (click)="copyText(pw)"><i class="bi bi-clipboard"></i></button>
+                    <button class="btn btn-sm btn-link p-0 ms-1" title="Hide" (click)="hide(c)"><i class="bi bi-eye-slash"></i></button>
+                  } @else if (c.hasStoredPassword) {
+                    <span class="text-muted">••••••••</span>
+                    <button class="btn btn-sm btn-outline-secondary py-0 ms-1" (click)="reveal(c)">Show</button>
+                  } @else {
+                    <span class="text-muted small" title="Use Reset admin password to set a password you can view here">—</span>
+                  }
+                </td>
                 <td>
                   <span class="badge" [class.bg-success]="c.status === 'active'" [class.bg-danger]="c.status === 'suspended'">{{ c.status }}</span>
                 </td>
@@ -49,14 +62,19 @@ import { LoadingService } from '../../core/loading.service';
                 <td>{{ c.enabledModules.length ? c.enabledModules.join(', ') : '—' }}</td>
                 <td class="text-end">
                   <button class="btn btn-sm btn-outline-secondary me-1" (click)="openModules(c)">Modules</button>
-                  <button class="btn btn-sm btn-outline-secondary me-1" (click)="openReset(c)">Reset admin password</button>
-                  <button class="btn btn-sm" [class.btn-outline-danger]="c.status === 'active'" [class.btn-outline-success]="c.status === 'suspended'" (click)="toggleStatus(c)">
+                  @if (c.adminUsername) {
+                    <button class="btn btn-sm btn-outline-secondary me-1" (click)="openReset(c)">Reset admin password</button>
+                  } @else {
+                    <button class="btn btn-sm btn-primary me-1" (click)="openAdmin(c)"><i class="bi bi-person-plus"></i> Create admin</button>
+                  }
+                  <button class="btn btn-sm me-1" [class.btn-outline-warning]="c.status === 'active'" [class.btn-outline-success]="c.status === 'suspended'" (click)="toggleStatus(c)">
                     {{ c.status === 'active' ? 'Suspend' : 'Activate' }}
                   </button>
+                  <button class="btn btn-sm btn-outline-danger" (click)="openDelete(c)"><i class="bi bi-trash"></i> Delete</button>
                 </td>
               </tr>
             } @empty {
-              <tr><td colspan="7" class="text-center text-muted py-4">@if (loading.busy()) { <span class="spinner-border spinner-border-sm me-2"></span>Loading clinics… } @else { No clinics yet }</td></tr>
+              <tr><td colspan="8" class="text-center text-muted py-4">@if (loading.busy()) { <span class="spinner-border spinner-border-sm me-2"></span>Loading clinics… } @else { No clinics yet }</td></tr>
             }
           </tbody>
         </table>
@@ -148,6 +166,42 @@ import { LoadingService } from '../../core/loading.service';
       </div>
     }
 
+    <!-- Create the clinic's admin login -->
+    @if (mode() === 'admin' && selected(); as c) {
+      <div class="modal d-block modal-backdrop-custom" tabindex="-1">
+        <div class="modal-dialog">
+          <form class="modal-content" (ngSubmit)="createAdmin()">
+            <div class="modal-header"><h5 class="modal-title">Create admin — {{ c.name }}</h5><button type="button" class="btn-close" (click)="close()"></button></div>
+            <div class="modal-body">
+              @if (formError()) { <div class="alert alert-danger py-2">{{ formError() }}</div> }
+              <div class="mb-3"><label class="form-label">Name *</label><input class="form-control" name="an" [(ngModel)]="adminForm.name" required /></div>
+              <div class="mb-3"><label class="form-label">Username *</label><input class="form-control" name="au" [(ngModel)]="adminForm.username" required autocomplete="off" /></div>
+              <div class="mb-1"><label class="form-label">Password * <small class="text-muted">(min 8)</small></label><input type="password" class="form-control" name="ap" [(ngModel)]="adminForm.password" required autocomplete="new-password" /></div>
+            </div>
+            <div class="modal-footer"><button type="button" class="btn btn-light" (click)="close()">Cancel</button><button class="btn btn-primary" [disabled]="saving()">Create admin</button></div>
+          </form>
+        </div>
+      </div>
+    }
+
+    <!-- Delete a clinic and all its data -->
+    @if (mode() === 'delete' && selected(); as c) {
+      <div class="modal d-block modal-backdrop-custom" tabindex="-1">
+        <div class="modal-dialog">
+          <form class="modal-content" (ngSubmit)="confirmDelete()">
+            <div class="modal-header"><h5 class="modal-title text-danger">Delete clinic — {{ c.name }}</h5><button type="button" class="btn-close" (click)="close()"></button></div>
+            <div class="modal-body">
+              @if (formError()) { <div class="alert alert-danger py-2">{{ formError() }}</div> }
+              <div class="alert alert-danger py-2 small">This permanently deletes the clinic with <strong>all</strong> its patients, visits, prescriptions, bills and logins. It cannot be undone.</div>
+              <label class="form-label">Type the clinic code <code>{{ c.code }}</code> to confirm</label>
+              <input class="form-control" name="dc" [(ngModel)]="deleteCode" autocomplete="off" />
+            </div>
+            <div class="modal-footer"><button type="button" class="btn btn-light" (click)="close()">Cancel</button><button class="btn btn-danger" [disabled]="saving() || deleteCode.trim().toLowerCase() !== c.code">Delete clinic</button></div>
+          </form>
+        </div>
+      </div>
+    }
+
     <!-- Reset admin password -->
     @if (mode() === 'reset' && selected(); as c) {
       <div class="modal d-block modal-backdrop-custom" tabindex="-1">
@@ -172,7 +226,9 @@ export class ClinicsComponent implements OnInit {
 
   clinics = signal<Clinic[]>([]);
   optionalModules = signal<ModuleDef[]>([]);
-  mode = signal<'' | 'create' | 'modules' | 'reset'>('');
+  mode = signal<'' | 'create' | 'modules' | 'reset' | 'admin' | 'delete'>('');
+  adminForm = { name: '', username: '', password: '' };
+  deleteCode = '';
   selected = signal<Clinic | null>(null);
   error = signal('');
   notice = signal('');
@@ -180,6 +236,8 @@ export class ClinicsComponent implements OnInit {
   saving = signal(false);
   credentials = signal<{ clinicName: string; code: string; username: string; password: string } | null>(null);
   copied = signal(false);
+  /** Admin passwords that are currently revealed, by clinic id. */
+  shown = signal<Record<string, string>>({});
 
   form = this.emptyForm();
   modulesDraft: string[] = [];
@@ -217,6 +275,48 @@ export class ClinicsComponent implements OnInit {
     this.modulesDraft = [...c.enabledModules];
     this.formError.set('');
     this.mode.set('modules');
+  }
+
+  openAdmin(c: Clinic) {
+    this.selected.set(c);
+    this.adminForm = { name: '', username: '', password: '' };
+    this.formError.set('');
+    this.mode.set('admin');
+  }
+
+  createAdmin() {
+    const c = this.selected();
+    const f = this.adminForm;
+    if (!c) return;
+    if (!f.name || !f.username || !f.password) {
+      this.formError.set('Please fill all fields');
+      return;
+    }
+    this.saving.set(true);
+    this.http.post(`${API}/clinics/${c._id}/admin`, f).subscribe({
+      next: () => {
+        this.done('Admin created');
+        this.showCredentials({ clinicName: c.name, code: c.code, username: f.username.toLowerCase().trim(), password: f.password });
+      },
+      error: (e) => this.fail(e),
+    });
+  }
+
+  openDelete(c: Clinic) {
+    this.selected.set(c);
+    this.deleteCode = '';
+    this.formError.set('');
+    this.mode.set('delete');
+  }
+
+  confirmDelete() {
+    const c = this.selected();
+    if (!c) return;
+    this.saving.set(true);
+    this.http.delete(`${API}/clinics/${c._id}`, { body: { confirmCode: this.deleteCode } }).subscribe({
+      next: () => this.done('Clinic deleted'),
+      error: (e) => this.fail(e),
+    });
   }
 
   openReset(c: Clinic) {
@@ -276,6 +376,25 @@ export class ClinicsComponent implements OnInit {
   private showCredentials(c: { clinicName: string; code: string; username: string; password: string }) {
     this.copied.set(false);
     this.credentials.set(c);
+  }
+
+  reveal(c: Clinic) {
+    this.http.get<{ password: string }>(`${API}/clinics/${c._id}/admin-password`).subscribe({
+      next: (r) => this.shown.update((s) => ({ ...s, [c._id]: r.password })),
+      error: (e) => this.error.set(errorMessage(e)),
+    });
+  }
+
+  hide(c: Clinic) {
+    this.shown.update((s) => {
+      const n = { ...s };
+      delete n[c._id];
+      return n;
+    });
+  }
+
+  copyText(text: string) {
+    navigator.clipboard?.writeText(text);
   }
 
   copyCredentials(c: { code: string; username: string; password: string }) {
