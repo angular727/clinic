@@ -87,7 +87,7 @@ import { LoadingService } from '../../core/loading.service';
               </div>
               <div class="mb-3">
                 <label class="form-label">Role *</label>
-                <select class="form-select" name="roleId" [(ngModel)]="form.roleId" required>
+                <select class="form-select" name="roleId" [(ngModel)]="form.roleId" (ngModelChange)="onRoleChange()" required>
                   <option value="" disabled>Select role</option>
                   @for (r of roles(); track r._id) { <option [value]="r._id">{{ r.name }}</option> }
                 </select>
@@ -246,6 +246,12 @@ export class UsersComponent implements OnInit {
         this.formError.set(errorMessage(e));
       },
     });
+  }
+
+  /** Choosing a role called "Doctor" turns on the "This user is a doctor" switch, which Reception's doctor list needs. */
+  onRoleChange() {
+    const role = this.roles().find((r) => r._id === this.form.roleId);
+    if (role && /doctor/i.test(role.name)) this.form.isDoctor = true;
   }
 
   remove(u: ClinicUser) {
