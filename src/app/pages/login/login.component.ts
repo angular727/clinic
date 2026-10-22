@@ -1,12 +1,13 @@
 import { Component, inject, isDevMode, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { PasswordInputComponent } from '../../shared/password-input.component';
 import { Router } from '@angular/router';
 import { errorMessage } from '../../core/api';
 import { AuthService } from '../../core/auth.service';
 
 @Component({
   selector: 'app-login',
-  imports: [FormsModule],
+  imports: [PasswordInputComponent, FormsModule],
   template: `
     <div class="login-wrap d-flex align-items-center justify-content-center">
       <form class="card shadow border-0 p-4" (ngSubmit)="submit()">
@@ -30,7 +31,7 @@ import { AuthService } from '../../core/auth.service';
         </div>
         <div class="mb-3">
           <label class="form-label">Password</label>
-          <input class="form-control" type="password" name="password" [(ngModel)]="password" required autocomplete="current-password" />
+          <app-password-input name="password" [(ngModel)]="password" required autocomplete="current-password" />
         </div>
         <div class="form-check mb-3">
           <input class="form-check-input" type="checkbox" id="sa" name="sa" [(ngModel)]="superAdmin" />

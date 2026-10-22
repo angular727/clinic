@@ -2,13 +2,14 @@ import { DatePipe } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { PasswordInputComponent } from '../../shared/password-input.component';
 import { API, errorMessage } from '../../core/api';
 import { Clinic, ModuleDef } from '../../core/models';
 import { LoadingService } from '../../core/loading.service';
 
 @Component({
   selector: 'app-clinics',
-  imports: [FormsModule, DatePipe],
+  imports: [PasswordInputComponent, FormsModule, DatePipe],
   template: `
     <div class="d-flex justify-content-between align-items-center mb-3">
       <h3 class="mb-0">Clinics</h3>
@@ -98,7 +99,7 @@ import { LoadingService } from '../../core/loading.service';
                 <div class="col-12"><hr class="my-1" /><div class="fw-semibold">Clinic admin</div></div>
                 <div class="col-md-4"><label class="form-label">Name *</label><input class="form-control" name="an" [(ngModel)]="form.adminName" required /></div>
                 <div class="col-md-4"><label class="form-label">Username *</label><input class="form-control" name="au" [(ngModel)]="form.adminUsername" required autocomplete="off" /></div>
-                <div class="col-md-4"><label class="form-label">Password * <small class="text-muted">(min 8)</small></label><input type="password" class="form-control" name="ap" [(ngModel)]="form.adminPassword" required autocomplete="new-password" /></div>
+                <div class="col-md-4"><label class="form-label">Password * <small class="text-muted">(min 8)</small></label><app-password-input name="ap" [(ngModel)]="form.adminPassword" required autocomplete="new-password" /></div>
                 @if (optionalModules().length) {
                   <div class="col-12"><hr class="my-1" /><div class="fw-semibold mb-1">Optional modules</div>
                     @for (m of optionalModules(); track m.key) {
@@ -176,7 +177,7 @@ import { LoadingService } from '../../core/loading.service';
               @if (formError()) { <div class="alert alert-danger py-2">{{ formError() }}</div> }
               <div class="mb-3"><label class="form-label">Name *</label><input class="form-control" name="an" [(ngModel)]="adminForm.name" required /></div>
               <div class="mb-3"><label class="form-label">Username *</label><input class="form-control" name="au" [(ngModel)]="adminForm.username" required autocomplete="off" /></div>
-              <div class="mb-1"><label class="form-label">Password * <small class="text-muted">(min 8)</small></label><input type="password" class="form-control" name="ap" [(ngModel)]="adminForm.password" required autocomplete="new-password" /></div>
+              <div class="mb-1"><label class="form-label">Password * <small class="text-muted">(min 8)</small></label><app-password-input name="ap" [(ngModel)]="adminForm.password" required autocomplete="new-password" /></div>
             </div>
             <div class="modal-footer"><button type="button" class="btn btn-light" (click)="close()">Cancel</button><button class="btn btn-primary" [disabled]="saving()">Create admin</button></div>
           </form>
@@ -211,7 +212,7 @@ import { LoadingService } from '../../core/loading.service';
             <div class="modal-body">
               @if (formError()) { <div class="alert alert-danger py-2">{{ formError() }}</div> }
               <label class="form-label">New password <small class="text-muted">(min 8)</small></label>
-              <input type="password" class="form-control" name="np" [(ngModel)]="newPassword" required autocomplete="new-password" />
+              <app-password-input name="np" [(ngModel)]="newPassword" required autocomplete="new-password" />
             </div>
             <div class="modal-footer"><button type="button" class="btn btn-light" (click)="close()">Cancel</button><button class="btn btn-primary" [disabled]="saving()">Reset</button></div>
           </form>

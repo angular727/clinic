@@ -1,12 +1,13 @@
 import { HttpClient } from '@angular/common/http';
 import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { PasswordInputComponent } from '../../shared/password-input.component';
 import { API, errorMessage } from '../../core/api';
 
 /** Every signed-in user (including the Super Admin) can change their own password here. */
 @Component({
   selector: 'app-change-password',
-  imports: [FormsModule],
+  imports: [PasswordInputComponent, FormsModule],
   template: `
     <h3 class="mb-3">Change password</h3>
     <div class="row">
@@ -17,15 +18,15 @@ import { API, errorMessage } from '../../core/api';
             @if (notice()) { <div class="alert alert-success py-2">{{ notice() }}</div> }
             <div class="mb-3">
               <label class="form-label">Current password</label>
-              <input type="password" class="form-control" name="current" [(ngModel)]="current" autocomplete="current-password" required />
+              <app-password-input name="current" [(ngModel)]="current" autocomplete="current-password" required />
             </div>
             <div class="mb-3">
               <label class="form-label">New password <small class="text-muted">(at least 8 characters)</small></label>
-              <input type="password" class="form-control" name="next" [(ngModel)]="next" autocomplete="new-password" required />
+              <app-password-input name="next" [(ngModel)]="next" autocomplete="new-password" required />
             </div>
             <div class="mb-1">
               <label class="form-label">Confirm new password</label>
-              <input type="password" class="form-control" name="confirm" [(ngModel)]="confirm" autocomplete="new-password" required />
+              <app-password-input name="confirm" [(ngModel)]="confirm" autocomplete="new-password" required />
             </div>
             <div class="form-text">After you change it yourself, only you know it: the clinic admin can no longer view it.</div>
           </div>

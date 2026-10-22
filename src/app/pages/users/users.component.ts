@@ -2,6 +2,7 @@ import { DatePipe } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { PasswordInputComponent } from '../../shared/password-input.component';
 import { API, errorMessage } from '../../core/api';
 import { HasPermissionDirective } from '../../core/has-permission.directive';
 import { ClinicUser, Role } from '../../core/models';
@@ -10,7 +11,7 @@ import { LoadingService } from '../../core/loading.service';
 
 @Component({
   selector: 'app-users',
-  imports: [FormsModule, DatePipe, HasPermissionDirective],
+  imports: [PasswordInputComponent, FormsModule, DatePipe, HasPermissionDirective],
   template: `
     <div class="d-flex justify-content-between align-items-center mb-3">
       <h3 class="mb-0">Users</h3>
@@ -80,7 +81,7 @@ import { LoadingService } from '../../core/loading.service';
               <div class="mb-3"><label class="form-label">Username *</label><input class="form-control" name="username" [(ngModel)]="form.username" [disabled]="!!editingId" required autocomplete="off" /></div>
               <div class="mb-3">
                 <label class="form-label">{{ editingId ? 'New password (leave blank to keep)' : 'Password * (min 8)' }}</label>
-                <input type="password" class="form-control" name="password" [(ngModel)]="form.password" [required]="!editingId" autocomplete="new-password" />
+                <app-password-input name="password" [(ngModel)]="form.password" [required]="!editingId" autocomplete="new-password" />
               </div>
               <div class="mb-3">
                 <label class="form-label">Role *</label>
