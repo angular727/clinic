@@ -20,7 +20,7 @@ import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
         [attr.autocomplete]="autocomplete()"
         [attr.placeholder]="placeholder() || null"
         (input)="onInput($event)"
-        (blur)="onTouched()"
+        (blur)="onBlur()"
       />
       <button
         type="button"
@@ -58,6 +58,16 @@ export class PasswordInputComponent implements ControlValueAccessor {
   }
   setDisabledState(isDisabled: boolean): void {
     this.disabled = isDisabled;
+  }
+
+  /** A copied password often carries a stray space or line break at the end: remove it when leaving the box. */
+  onBlur() {
+    const trimmed = this.value.trim();
+    if (trimmed !== this.value) {
+      this.value = trimmed;
+      this.onChange(trimmed);
+    }
+    this.onTouched();
   }
 
   onInput(e: Event) {

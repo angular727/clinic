@@ -13,8 +13,8 @@ import { AuthService } from '../../core/auth.service';
       <form class="card shadow border-0 p-4" (ngSubmit)="submit()">
         <div class="text-center mb-3">
           <i class="bi bi-heart-pulse-fill logo"></i>
-          <h4 class="mt-2 mb-0">Clinic Manager</h4>
-          <div class="text-muted small">Sign in to continue</div>
+          <h4 class="mt-2 mb-0">Welcome back</h4>
+          <div class="text-muted small">Sign in to your account</div>
         </div>
 
         @if (error()) {
@@ -86,7 +86,7 @@ export class LoginComponent {
     }
     this.loading.set(true);
     this.auth
-      .login({ clinicCode: this.superAdmin ? undefined : this.clinicCode.trim(), username: this.username.trim(), password: this.password })
+      .login({ clinicCode: this.superAdmin ? undefined : this.clinicCode.trim(), username: this.username.trim(), password: this.password.trim() })
       .subscribe({
         next: () => this.router.navigate(['/dashboard']),
         error: (e) => {
