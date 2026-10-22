@@ -2,6 +2,7 @@ import { DatePipe } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { copyToClipboard } from '../../core/util';
 import { PasswordInputComponent } from '../../shared/password-input.component';
 import { API, errorMessage } from '../../core/api';
 import { Clinic, ModuleDef } from '../../core/models';
@@ -46,8 +47,9 @@ import { LoadingService } from '../../core/loading.service';
                 <td><code>{{ c.adminUsername || '—' }}</code></td>
                 <td class="text-nowrap">
                   @if (shown()[c._id]; as pw) {
-                    <code>{{ pw }}</code>
-                    <button class="btn btn-sm btn-link p-0 ms-1" title="Copy" (click)="copyText(pw)"><i class="bi bi-clipboard"></i></button>
+                    <code style="cursor:pointer" title="Click to copy" (click)="copyText(pw, c._id)">{{ pw }}</code>
+                    @if (copiedKey() === c._id) { <span class="text-success small ms-1"><i class="bi bi-check2"></i> Copied</span> }
+                    <button class="btn btn-sm btn-link p-0 ms-1" title="Copy" (click)="copyText(pw, c._id)"><i class="bi" [class.bi-clipboard]="copiedKey() !== c._id" [class.bi-clipboard-check]="copiedKey() === c._id"></i></button>
                     <button class="btn btn-sm btn-link p-0 ms-1" title="Hide" (click)="hide(c)"><i class="bi bi-eye-slash"></i></button>
                   } @else if (c.hasStoredPassword) {
                     <span class="text-muted">••••••••</span>
@@ -394,13 +396,20 @@ export class ClinicsComponent implements OnInit {
     });
   }
 
-  copyText(text: string) {
-    navigator.clipboard?.writeText(text);
+  copiedKey = signal('');
+
+  /** Copies the password; shows a "Copied" mark next to it for a moment. */
+  copyText(text: string, key: string) {
+    copyToClipboard(text).then((ok) => {
+      if (!ok) return this.error.set('Could not copy. Select the password and press Ctrl+C.');
+      this.copiedKey.set(key);
+      setTimeout(() => this.copiedKey.set(''), 1800);
+    });
   }
 
   copyCredentials(c: { code: string; username: string; password: string }) {
     const text = `Clinic code: ${c.code}\nUsername: ${c.username}\nPassword: ${c.password}`;
-    navigator.clipboard?.writeText(text).then(() => this.copied.set(true));
+    copyToClipboard(text).then((ok) => this.copied.set(ok));
   }
 
   saveModules() {

@@ -5,6 +5,31 @@ export const today = (offsetDays = 0): string => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 };
 
+/** Copies text to the clipboard. Falls back to the old method when the browser blocks the modern one. */
+export async function copyToClipboard(text: string): Promise<boolean> {
+  try {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch {
+    /* try the fallback below */
+  }
+  try {
+    const box = document.createElement('textarea');
+    box.value = text;
+    box.style.position = 'fixed';
+    box.style.opacity = '0';
+    document.body.appendChild(box);
+    box.select();
+    const ok = document.execCommand('copy');
+    document.body.removeChild(box);
+    return ok;
+  } catch {
+    return false;
+  }
+}
+
 /** Add (or subtract) days to a YYYY-MM-DD string. */
 export const addDays = (day: string, n: number): string => {
   const [y, m, d] = day.split('-').map(Number);

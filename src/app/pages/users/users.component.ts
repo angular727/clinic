@@ -2,6 +2,7 @@ import { DatePipe } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { copyToClipboard } from '../../core/util';
 import { PasswordInputComponent } from '../../shared/password-input.component';
 import { API, errorMessage } from '../../core/api';
 import { HasPermissionDirective } from '../../core/has-permission.directive';
@@ -34,8 +35,9 @@ import { LoadingService } from '../../core/loading.service';
                 @if (isAdmin()) {
                   <td class="text-nowrap">
                     @if (shown()[u._id]; as pw) {
-                      <code>{{ pw }}</code>
-                      <button class="btn btn-sm btn-link p-0 ms-1" title="Copy" (click)="copyText(pw)"><i class="bi bi-clipboard"></i></button>
+                      <code style="cursor:pointer" title="Click to copy" (click)="copyText(pw, u._id)">{{ pw }}</code>
+                    @if (copiedKey() === u._id) { <span class="text-success small ms-1"><i class="bi bi-check2"></i> Copied</span> }
+                      <button class="btn btn-sm btn-link p-0 ms-1" title="Copy" (click)="copyText(pw, u._id)"><i class="bi" [class.bi-clipboard]="copiedKey() !== u._id" [class.bi-clipboard-check]="copiedKey() === u._id"></i></button>
                       <button class="btn btn-sm btn-link p-0 ms-1" title="Hide" (click)="hide(u)"><i class="bi bi-eye-slash"></i></button>
                     } @else if (u.hasStoredPassword) {
                       <span class="text-muted">••••••••</span>
@@ -166,13 +168,20 @@ export class UsersComponent implements OnInit {
     });
   }
 
-  copyText(text: string) {
-    navigator.clipboard?.writeText(text);
+  copiedKey = signal('');
+
+  /** Copies the password; shows a "Copied" mark next to it for a moment. */
+  copyText(text: string, key: string) {
+    copyToClipboard(text).then((ok) => {
+      if (!ok) return this.error.set('Could not copy. Select the password and press Ctrl+C.');
+      this.copiedKey.set(key);
+      setTimeout(() => this.copiedKey.set(''), 1800);
+    });
   }
 
   copyCreds(c: { username: string; password: string }) {
     const code = this.auth.me()?.clinic?.code ?? '';
-    navigator.clipboard?.writeText(`Clinic code: ${code}\nUsername: ${c.username}\nPassword: ${c.password}`).then(() => this.copied.set(true));
+    copyToClipboard(`Clinic code: ${code}\nUsername: ${c.username}\nPassword: ${c.password}`).then((ok) => this.copied.set(ok));
   }
 
   users = signal<ClinicUser[]>([]);
