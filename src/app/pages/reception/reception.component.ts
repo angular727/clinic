@@ -2,7 +2,7 @@ import { DecimalPipe } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { API, errorMessage } from '../../core/api';
 import { AuthService } from '../../core/auth.service';
 import { Doctor, PatientRef, QueueItem, Vitals } from '../../core/models';
@@ -29,7 +29,7 @@ interface Slip {
 
 @Component({
   selector: 'app-reception',
-  imports: [FormsModule, DecimalPipe, PatientPickerComponent],
+  imports: [FormsModule, DecimalPipe, RouterLink, PatientPickerComponent],
   template: `
     <div class="no-print">
       <div class="d-flex justify-content-between align-items-center mb-3">
@@ -103,7 +103,12 @@ interface Slip {
                     <option value="" disabled>Select doctor</option>
                     @for (d of doctors(); track d._id) { <option [value]="d._id">{{ d.name }}{{ d.specialization ? ' — ' + d.specialization : '' }}</option> }
                   </select>
-                  @if (!doctors().length) { <div class="form-text text-danger">No doctors yet. Open Users and mark a user as "Doctor".</div> }
+                  @if (!doctors().length) {
+                    <div class="form-text text-danger">
+                      No doctors yet. Go to <a routerLink="/settings/users">Users</a>, add a user (or edit an existing one) and tick
+                      <strong>"This user is a doctor"</strong>.
+                    </div>
+                  }
                 </div>
                 <div class="col-md-7"><label class="form-label mb-0">Complaint</label><input class="form-control" name="complaint" [(ngModel)]="complaint" placeholder="e.g. fever, cough" /></div>
               </div>
