@@ -43,7 +43,9 @@ body {
 @media print {
   @page {
     size: A4;
-    margin: 12mm;
+    // No page margin: the browser then has no room for its own date / title / URL header and footer.
+    // The margin is added as padding on .print-sheet instead.
+    margin: 0;
   }
   body {
     background: #fff !important;
@@ -58,6 +60,6 @@ body {
   .print-sheet {
     box-shadow: none;
     max-width: none;
-    padding: 0;
+    padding: 12mm;
   }
 }

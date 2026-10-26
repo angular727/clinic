@@ -71,7 +71,7 @@ import { LoadingService } from '../../core/loading.service';
 
     @if (showForm()) {
       <div class="modal d-block modal-backdrop-custom" tabindex="-1">
-        <div class="modal-dialog">
+        <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
           <form class="modal-content" (ngSubmit)="save()">
             <div class="modal-header">
               <h5 class="modal-title">{{ editingId ? 'Edit user' : 'New user' }}</h5>
@@ -102,6 +102,10 @@ import { LoadingService } from '../../core/loading.service';
                   <div class="col-md-6"><label class="form-label">Qualification</label><input class="form-control" name="qual" [(ngModel)]="form.qualification" placeholder="e.g. MBBS, FCPS" /></div>
                   <div class="col-md-6"><label class="form-label">Registration no. (PMDC)</label><input class="form-control" name="reg" [(ngModel)]="form.registrationNo" /></div>
                   <div class="col-md-6"><label class="form-label">Consultation fee</label><input type="number" min="0" class="form-control" name="fee" [(ngModel)]="form.consultationFee" /></div>
+                  <div class="col-12 fw-semibold small text-uppercase text-muted pt-2">Prescription letterhead (this doctor only)</div>
+                  <div class="col-12"><label class="form-label">Header lines <span class="text-muted small">(under the doctor's name, one per line)</span></label><textarea class="form-control" rows="2" name="hdr" [(ngModel)]="form.headerLines" placeholder="PM &amp; DC 40888-P&#10;PHC Reg. 37883"></textarea></div>
+                  <div class="col-md-6"><label class="form-label">Footer (English)</label><textarea class="form-control" rows="3" name="fen" [(ngModel)]="form.footerEn" placeholder="Clinic address&#10;Phone, email"></textarea></div>
+                  <div class="col-md-6"><label class="form-label">Footer (Urdu)</label><textarea class="form-control" dir="rtl" rows="3" name="fur" [(ngModel)]="form.footerUr"></textarea></div>
                 </div>
               }
               <div class="row g-3">
@@ -200,7 +204,7 @@ export class UsersComponent implements OnInit {
   }
 
   private emptyForm() {
-    return { name: '', username: '', password: '', roleId: '', phone: '', email: '', isDoctor: false, specialization: '', qualification: '', registrationNo: '', consultationFee: 0 };
+    return { name: '', username: '', password: '', roleId: '', phone: '', email: '', isDoctor: false, specialization: '', qualification: '', registrationNo: '', consultationFee: 0, headerLines: '', footerEn: '', footerUr: '' };
   }
 
   load() {
@@ -214,7 +218,7 @@ export class UsersComponent implements OnInit {
     this.formError.set('');
     this.editingId = u?._id ?? '';
     this.form = u
-      ? { name: u.name, username: u.username, password: '', roleId: u.roleId?._id ?? '', phone: u.phone ?? '', email: u.email ?? '', isDoctor: !!u.isDoctor, specialization: u.specialization ?? '', qualification: u.qualification ?? '', registrationNo: u.registrationNo ?? '', consultationFee: u.consultationFee ?? 0 }
+      ? { name: u.name, username: u.username, password: '', roleId: u.roleId?._id ?? '', phone: u.phone ?? '', email: u.email ?? '', isDoctor: !!u.isDoctor, specialization: u.specialization ?? '', qualification: u.qualification ?? '', registrationNo: u.registrationNo ?? '', consultationFee: u.consultationFee ?? 0, headerLines: u.headerLines ?? '', footerEn: u.footerEn ?? '', footerUr: u.footerUr ?? '' }
       : this.emptyForm();
     this.showForm.set(true);
   }
@@ -226,7 +230,7 @@ export class UsersComponent implements OnInit {
       return;
     }
     this.saving.set(true);
-    const body: Record<string, unknown> = { name: f.name, roleId: f.roleId, phone: f.phone, email: f.email, isDoctor: f.isDoctor, specialization: f.specialization, qualification: f.qualification, registrationNo: f.registrationNo, consultationFee: Number(f.consultationFee) || 0 };
+    const body: Record<string, unknown> = { name: f.name, roleId: f.roleId, phone: f.phone, email: f.email, isDoctor: f.isDoctor, specialization: f.specialization, qualification: f.qualification, registrationNo: f.registrationNo, consultationFee: Number(f.consultationFee) || 0, headerLines: f.headerLines, footerEn: f.footerEn, footerUr: f.footerUr };
     if (f.password) body['password'] = f.password;
     const req = this.editingId
       ? this.http.put(`${API}/users/${this.editingId}`, body)

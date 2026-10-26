@@ -55,6 +55,9 @@ export interface ClinicUser {
   qualification?: string;
   registrationNo?: string;
   consultationFee?: number;
+  headerLines?: string;
+  footerEn?: string;
+  footerUr?: string;
   hasStoredPassword?: boolean;
   roleId: { _id: string; name: string; isAdmin: boolean } | null;
 }

@@ -24,78 +24,125 @@ import { ageText } from '../../core/util';
 
     @if (rx(); as r) {
       <div class="print-sheet rx">
-        <div class="text-center pb-2 mb-2 head">
-          <div class="clinic-name">{{ clinic()?.name }}</div>
-          @if (clinic()?.settings?.tagline) { <div class="text-muted small">{{ clinic()?.settings?.tagline }}</div> }
-          <div class="small">{{ clinic()?.address }}{{ clinic()?.phone ? ' · Tel: ' + clinic()?.phone : '' }}</div>
-        </div>
+        <div class="watermark">{{ clinic()?.name }}</div>
 
-        <div class="d-flex justify-content-between mb-2">
-          <div>
-            <div class="fw-bold">{{ r.doctorId?.name }}</div>
-            @if (r.doctorId?.qualification) { <div class="small">{{ r.doctorId.qualification }}</div> }
-            @if (r.doctorId?.specialization) { <div class="small">{{ r.doctorId.specialization }}</div> }
-            @if (r.doctorId?.registrationNo) { <div class="small text-muted">Reg. No: {{ r.doctorId.registrationNo }}</div> }
+        <div class="head">
+          <div class="doc-block">
+            <div class="doc-name">{{ r.doctorId?.name }}</div>
+            <div class="doc-lines">
+              @for (l of headerLines(r); track $index) { <div class="doc-line">{{ l }}</div> }
+            </div>
           </div>
-          <div class="text-end small">
-            <div>Rx No: <strong>{{ r.rxNo }}</strong></div>
-            <div>Date: <strong>{{ r.date }}</strong></div>
+          <div class="head-right">
+            <div class="dots"><span>Rx No</span><b class="fill text-end" style="padding-right: 28px">{{ r.rxNo }}</b></div>
+            <div class="dots"><span>Allergy</span><b class="fill text-danger">{{ r.patientId?.allergies }}</b></div>
           </div>
         </div>
+        <div class="rule"></div>
 
-        <div class="patient-box d-flex flex-wrap justify-content-between mb-2">
-          <div><strong>{{ r.patientId?.name }}</strong></div>
-          <div>ID: {{ r.patientId?.mrn }}</div>
-          <div class="text-capitalize">{{ r.patientId?.gender }}{{ age(r.patientId) ? ' · ' + age(r.patientId) : '' }}</div>
-          @if (r.patientId?.phone) { <div>{{ r.patientId.phone }}</div> }
+        <div class="info">
+          <div class="row-3">
+            <div><b>Name:</b> {{ r.patientId?.name }}</div>
+            <div><b>MR#:</b> {{ r.patientId?.mrn }}</div>
+            <div class="text-end"><b>Age/Sex:</b> <span class="text-capitalize">{{ age(r.patientId) }}{{ r.patientId?.gender ? ' / ' + r.patientId.gender : '' }}</span></div>
+          </div>
+          <div class="row-3">
+            <div><b>Phone:</b> {{ r.patientId?.phone }}</div>
+            <div><b>CNIC:</b> {{ r.patientId?.cnic }}</div>
+            <div class="text-end"><b>Visit No:</b> {{ r.visitId?.visitNo }} &nbsp; <b>Date:</b> {{ r.date }}</div>
+          </div>
         </div>
-        @if (r.patientId?.allergies) { <div class="small text-danger mb-2"><strong>Allergies:</strong> {{ r.patientId.allergies }}</div> }
+        <div class="rule"></div>
 
-        @if (vitalsText()) { <div class="small mb-2"><strong>Vitals:</strong> {{ vitalsText() }}</div> }
-        @if (r.visitId?.complaint) { <div class="small mb-1"><strong>Complaint:</strong> {{ r.visitId.complaint }}</div> }
-        @if (r.visitId?.diagnosis) { <div class="small mb-2"><strong>Diagnosis:</strong> {{ r.visitId.diagnosis }}</div> }
+        @if (vitalsList().length) {
+          <div class="vitals">
+            @for (v of vitalsList(); track v[0]) { <span><b>{{ v[0] }}:</b> {{ v[1] }}</span> }
+          </div>
+        }
+        <div class="rule thin"></div>
 
-        <div class="rx-symbol">℞</div>
-        <table class="table table-sm table-borderless rx-table">
-          <tbody>
-            @for (i of r.items; track $index) {
-              <tr>
-                <td class="num">{{ $index + 1 }}.</td>
-                <td>
-                  <div class="fw-semibold">{{ i.medicine }}</div>
-                  @if (i.instructions) { <div class="small text-muted">{{ i.instructions }}</div> }
-                </td>
-                <td>{{ i.dose }}</td>
-                <td>{{ i.frequency }}</td>
-                <td>{{ i.duration }}</td>
-              </tr>
-            } @empty {
-              <tr><td class="text-muted">No medicines</td></tr>
-            }
-          </tbody>
-        </table>
+        <div class="body-grid">
+          <div class="left">
+            <div class="rx-title">Prescription</div>
+            <div class="field"><b>Diagnosis:</b> <span>{{ r.visitId?.diagnosis }}</span></div>
+            <div class="field"><b>Complaint:</b> <span>{{ r.visitId?.complaint }}</span></div>
+            <div class="field"><b>Investigations:</b> <span>{{ r.tests }}</span></div>
+            <div class="field"><b>Advice:</b> <span>{{ r.advice }}</span></div>
+          </div>
+          <div class="right">
+            <table class="meds">
+              <thead><tr><th style="width:44%">Medicine</th><th>Instructions</th></tr></thead>
+              <tbody>
+                @for (i of r.items; track $index) {
+                  <tr>
+                    <td class="m-name">{{ i.medicine }}</td>
+                    <td class="m-ins">
+                      {{ doseLine(i) }}@if (i.duration || i.instructions) { <span class="small-ins"> · {{ noteLine(i) }}</span> }
+                    </td>
+                  </tr>
+                } @empty {
+                  <tr><td colspan="2" class="text-muted">No medicines</td></tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </div>
 
-        @if (r.tests) { <div class="mb-2"><strong>Tests advised:</strong> {{ r.tests }}</div> }
-        @if (r.advice) { <div class="mb-2"><strong>Advice:</strong> {{ r.advice }}</div> }
-        @if (r.visitId?.followUpDate) { <div class="mb-2"><strong>Follow-up:</strong> {{ r.visitId.followUpDate }}</div> }
-
-        <div class="d-flex justify-content-between align-items-end mt-5 pt-4">
-          <div class="small text-muted">{{ clinic()?.settings?.printFooter }}</div>
-          <div class="text-center sign"><div class="line"></div>Doctor's signature</div>
+        <div class="foot">
+          @if (r.visitId?.followUpDate) { <div class="follow">Recommended follow-up Appointment Date: {{ r.visitId.followUpDate }}</div> }
+          <div class="nvc"><span>Not valid for court.</span><i></i></div>
+          <div class="foot-grid">
+            <div class="foot-en">
+              @for (l of footerEn(r); track $index) { <div>{{ l }}</div> }
+            </div>
+            <div class="foot-ur" dir="rtl">
+              @for (l of footerUr(r); track $index) { <div>{{ l }}</div> }
+            </div>
+          </div>
+          <div class="rule" style="margin-top: 4px"></div>
         </div>
       </div>
     }
   `,
   styles: `
-    .clinic-name { font-size: 1.6rem; font-weight: 700; color: #0f4c4c; }
-    .head { border-bottom: 2px solid #0f4c4c; }
-    .patient-box { border: 1px solid #ccc; border-radius: 4px; padding: 6px 10px; font-size: .9rem; }
-    .rx-symbol { font-size: 2rem; font-weight: 700; line-height: 1; margin: 8px 0 4px; }
-    .rx-table td { padding: 4px 8px; }
-    .rx-table .num { width: 28px; }
-    .sign { min-width: 180px; font-size: .85rem; }
-    .sign .line { border-top: 1px solid #000; margin-bottom: 2px; }
-    .rx { min-height: 900px; }
+    .rx { position:relative; min-height:1040px; display:flex; flex-direction:column; overflow:hidden; font-size:11px; color:#111; }
+    .watermark { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%) rotate(-35deg); font-size:64px; font-weight:700; color:rgba(0,0,0,.05); white-space:nowrap; pointer-events:none; text-transform:uppercase; }
+    .head { display:flex; justify-content:space-between; align-items:flex-start; padding-bottom:6px; }
+    .doc-block { display:inline-block; }
+    .doc-name { font-family:'Times New Roman',Times,serif; font-style:italic; font-weight:700; font-size:27px; color:#222; line-height:1.1; }
+    .doc-lines { text-align:left; margin-top:4px; margin-left:108px; }
+    .doc-line { font-weight:700; font-size:9.5px; color:#b91c1c; line-height:1.35; }
+    .head-right { font-size:8.5px; width:190px; color:#444; }
+    .dots { display:flex; gap:4px; margin-bottom:8px; }
+    .dots i { flex:1; border-bottom:1px dotted #555; }
+    .dots .fill { flex:1; min-height:12px; border-bottom:1px dotted #555; padding:0 4px; font-size:9px; }
+    .rule { border-top:1.5px solid #b91c1c; margin:3px 0; }
+    .rule.thin { border-top-width:1px; }
+    .info { font-size:9px; }
+    .row-3 { display:grid; grid-template-columns:1.5fr 1fr 1.4fr; gap:8px; padding:3px 0; }
+    .row-3 b { color:#111; }
+    .vitals { display:flex; justify-content:space-between; gap:6px; border:1px solid #aaa; padding:5px 10px; font-size:8px; margin:7px 0; }
+    .body-grid { display:grid; grid-template-columns:24% 1fr; flex:1; margin-top:6px; }
+    .left { padding-right:8px; border-right:1px solid #bbb; }
+    .right { padding-left:8px; }
+    .rx-title { font-weight:700; text-decoration:underline; font-size:12px; margin-bottom:8px; }
+    .field { margin-bottom:7px; font-size:8px; line-height:1.5; }
+    .field b { color:#4a1530; font-size:9.5px; }
+    .field span { white-space:pre-wrap; }
+    .meds { width:100%; border-collapse:collapse; }
+    .meds th { background:#0b5d57; color:#fff; text-align:center; font-size:8px; padding:4px 6px; border:1px solid #0b5d57; }
+    .meds td { border:1px solid #c4c4c4; padding:4px 6px; vertical-align:middle; }
+    .m-name { font-weight:700; font-size:11.5px; }
+    .m-ins { text-align:right; font-size:9px; color:#444; }
+    .small-ins { font-size:7.5px; color:#666; }
+    .foot { margin-top:22px; }
+    .follow { text-align:right; font-size:8px; font-weight:700; text-decoration:underline dotted; margin-bottom:3px; }
+    .nvc { display:flex; align-items:center; gap:6px; font-size:7px; color:#333; }
+    .nvc i { flex:1; border-top:1px solid #b91c1c; }
+    @media print { .rx { min-height: 255mm; } }
+    .foot-grid { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; padding-top:2px; }
+    .foot-en { font-size:7.5px; color:#333; }
+    .foot-ur { font-family:'Noto Nastaliq Urdu',serif; font-size:11px; line-height:2.1; color:#8a1c1c; text-align:right; }
   `,
 })
 export class RxPrintComponent implements OnInit {
@@ -157,17 +204,50 @@ export class RxPrintComponent implements OnInit {
     }
   }
 
-  vitalsText() {
+  /** Recorded vitals as [label, value] pairs. */
+  vitalsList(): [string, string][] {
     const v = this.rx()?.visitId?.vitals;
-    if (!v) return '';
-    const parts: string[] = [];
-    if (v.bp) parts.push(`BP ${v.bp}`);
-    if (v.pulse) parts.push(`Pulse ${v.pulse}`);
-    if (v.temperature) parts.push(`Temp ${v.temperature}°F`);
-    if (v.spo2) parts.push(`SpO₂ ${v.spo2}%`);
-    if (v.weight) parts.push(`Wt ${v.weight} kg`);
-    if (v.sugar) parts.push(`Sugar ${v.sugar}`);
-    return parts.join(' · ');
+    if (!v) return [];
+    const out: [string, string][] = [];
+    if (v.bp) out.push(['BP', String(v.bp)]);
+    if (v.pulse) out.push(['Heart Rate', String(v.pulse)]);
+    if (v.temperature) out.push(['Temperature', `${v.temperature}`]);
+    if (v.spo2) out.push(['O2 Sat', `${v.spo2}`]);
+    if (v.weight) out.push(['Weight', `${v.weight}`]);
+    if (v.sugar) out.push(['Sugar', `${v.sugar}`]);
+    return out;
+  }
+
+  private lines = (s?: string) => String(s ?? '').split(/\r?\n/).map((x) => x.trim()).filter(Boolean);
+
+  /** The doctor's own header lines; falls back to qualification, specialization and registration number. */
+  headerLines(r: Prescription) {
+    const d = r.doctorId ?? {};
+    const own = this.lines(d.headerLines);
+    if (own.length) return own;
+    return [d.qualification, d.specialization, d.registrationNo ? `Reg. No: ${d.registrationNo}` : ''].filter(Boolean) as string[];
+  }
+
+  /** The doctor's own footer; falls back to the clinic's address and phone. */
+  footerEn(r: Prescription) {
+    const own = this.lines(r.doctorId?.footerEn);
+    if (own.length) return own;
+    const c = this.clinic();
+    return [c?.name, [c?.address, c?.phone ? 'Ph: ' + c.phone : ''].filter(Boolean).join(' · '), c?.settings?.printFooter].filter(Boolean) as string[];
+  }
+
+  footerUr(r: Prescription) {
+    return this.lines(r.doctorId?.footerUr);
+  }
+
+  noteLine(i: { duration?: string; instructions?: string }) {
+    return [i.duration, i.instructions].filter(Boolean).join(' · ');
+  }
+
+  /** "1+0+1" becomes "1 tab — 0 — 1": dose followed by the morning / noon / night pattern. */
+  doseLine(i: { dose?: string; frequency?: string }) {
+    const freq = String(i.frequency ?? '').replace(/\s*\+\s*/g, ' — ');
+    return [i.dose, freq].filter(Boolean).join('   ');
   }
 
   print() {
