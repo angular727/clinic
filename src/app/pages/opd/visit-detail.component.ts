@@ -1,11 +1,11 @@
 import { HttpClient } from '@angular/common/http';
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { API, errorMessage } from '../../core/api';
 import { AuthService } from '../../core/auth.service';
-import { Prescription, RxItem, Visit, Vitals } from '../../core/models';
+import { Medicine, Prescription, RxItem, Visit, Vitals } from '../../core/models';
 import { DURATIONS, FREQUENCIES, STATUS_CLASS, ageText } from '../../core/util';
 import { LoaderComponent } from '../../shared/loader.component';
 import { VisitHistoryComponent } from '../../shared/visit-history.component';
@@ -36,26 +36,23 @@ import { VisitHistoryComponent } from '../../shared/visit-history.component';
             <a class="btn btn-outline-dark" [routerLink]="['/prescriptions', rx()._id, 'print']" [queryParams]="{ auto: 'print' }"><i class="bi bi-printer me-1"></i>Print</a>
             <a class="btn btn-outline-dark" [routerLink]="['/prescriptions', rx()._id, 'print']" [queryParams]="{ auto: 'pdf' }"><i class="bi bi-file-earmark-pdf me-1"></i>PDF</a>
           }
-          @if (canEdit()) {
-            <button class="btn btn-success" [disabled]="saving()" (click)="save()">@if (saving()) { <span class="spinner-border spinner-border-sm me-1"></span>Saving… } @else { <i class="bi bi-check2-circle me-1"></i>Save }</button>
-          }
         </div>
       </div>
 
       <div class="row g-3">
-        <div class="col-lg-3">
-          <div class="card border-0 shadow-sm mb-3">
-            <div class="card-body small">
-              <div class="fw-semibold mb-1">Patient</div>
-              <div class="text-capitalize">{{ v.patientId.gender }}{{ age(v.patientId) ? ' · ' + age(v.patientId) : '' }}{{ v.patientId.bloodGroup ? ' · ' + v.patientId.bloodGroup : '' }}</div>
-              @if (v.patientId.phone) { <div><i class="bi bi-telephone"></i> {{ v.patientId.phone }}</div> }
-              @if (v.patientId.allergies) { <div class="alert alert-danger py-1 px-2 mt-2 mb-0"><strong>Allergies:</strong> {{ v.patientId.allergies }}</div> }
-              @if (v.patientId.chronicConditions) { <div class="alert alert-warning py-1 px-2 mt-2 mb-0"><strong>Chronic:</strong> {{ v.patientId.chronicConditions }}</div> }
+        <div class="col-12">
+          <div class="card border-0 shadow-sm">
+            <div class="card-body small d-flex flex-wrap align-items-center gap-3 py-2">
+              <span class="fw-semibold">Patient</span>
+              <span class="text-capitalize">{{ v.patientId.gender }}{{ age(v.patientId) ? ' · ' + age(v.patientId) : '' }}{{ v.patientId.bloodGroup ? ' · ' + v.patientId.bloodGroup : '' }}</span>
+              @if (v.patientId.phone) { <span><i class="bi bi-telephone"></i> {{ v.patientId.phone }}</span> }
+              @if (v.patientId.allergies) { <span class="alert alert-danger py-0 px-2 mb-0"><strong>Allergies:</strong> {{ v.patientId.allergies }}</span> }
+              @if (v.patientId.chronicConditions) { <span class="alert alert-warning py-0 px-2 mb-0"><strong>Chronic:</strong> {{ v.patientId.chronicConditions }}</span> }
             </div>
           </div>
         </div>
 
-        <div class="col-lg-9">
+        <div class="col-12">
           @if (showHistory()) {
             <div class="card border-0 shadow-sm mb-3">
               <div class="card-header bg-white fw-semibold"><i class="bi bi-clock-history me-1"></i>All earlier visits</div>
@@ -109,7 +106,36 @@ import { VisitHistoryComponent } from '../../shared/visit-history.component';
               <div class="card border-0 shadow-sm mb-3">
                 <div class="card-header bg-white d-flex justify-content-between align-items-center">
                   <span class="fw-semibold">Prescription @if (rx().rxNo) { <code class="ms-1">{{ rx().rxNo }}</code> }</span>
-                  <button type="button" class="btn btn-sm btn-outline-primary" (click)="addItem()"><i class="bi bi-plus-lg"></i> Add medicine</button>
+                  <div class="position-relative flex-grow-1 ms-3">
+                    <div class="input-group input-group-sm">
+                      <span class="input-group-text"><i class="bi bi-search"></i></span>
+                      <input
+                        class="form-control"
+                        name="medsearch"
+                        placeholder="Search a medicine and select it…"
+                        autocomplete="off"
+                        [ngModel]="medQuery()"
+                        (ngModelChange)="medQuery.set($event); medOpen.set(true)"
+                        (focus)="medOpen.set(true)"
+                        (blur)="closeMedList()"
+                        (keydown.enter)="$event.preventDefault(); pickFirstMedicine()"
+                        (keydown.escape)="medOpen.set(false)"
+                      />
+                    </div>
+                    @if (medOpen() && medQuery().trim()) {
+                      <div class="list-group position-absolute w-100 shadow" style="z-index: 1060; max-height: 300px; overflow: auto">
+                        @for (m of medMatches(); track m._id) {
+                          <button type="button" class="list-group-item list-group-item-action py-2" (mousedown)="$event.preventDefault(); addFromList(m)">
+                            <div class="fw-semibold">{{ m.name }}</div>
+                            <div class="small text-muted">{{ medSummary(m) || 'no saved details' }}</div>
+                          </button>
+                        }
+                        <button type="button" class="list-group-item list-group-item-action py-2 text-primary" (mousedown)="$event.preventDefault(); addTyped()">
+                          <i class="bi bi-plus-lg me-1"></i>Add "{{ medQuery().trim() }}" as a new medicine
+                        </button>
+                      </div>
+                    }
+                  </div>
                 </div>
                 <div class="card-body">
                   <div class="table-responsive">
@@ -118,21 +144,23 @@ import { VisitHistoryComponent } from '../../shared/visit-history.component';
                       <tbody>
                         @for (it of items(); track $index) {
                           <tr>
-                            <td><input class="form-control form-control-sm" [(ngModel)]="it.medicine" [name]="'m' + $index" placeholder="e.g. Tab Paracetamol 500mg" /></td>
-                            <td><input class="form-control form-control-sm" [(ngModel)]="it.dose" [name]="'d' + $index" placeholder="1 tab" /></td>
-                            <td><input class="form-control form-control-sm" list="freqs" [(ngModel)]="it.frequency" [name]="'f' + $index" placeholder="1+0+1" /></td>
-                            <td><input class="form-control form-control-sm" list="durs" [(ngModel)]="it.duration" [name]="'u' + $index" placeholder="5 days" /></td>
-                            <td><input class="form-control form-control-sm" [(ngModel)]="it.instructions" [name]="'i' + $index" placeholder="after meals" /></td>
+                            <td><input class="form-control form-control-sm" [(ngModel)]="it.medicine" (ngModelChange)="onMedicine(it, $event)" list="meds" autocomplete="off" [name]="'m' + $index" placeholder="Type a medicine name…" /></td>
+                            <td><input class="form-control form-control-sm" [(ngModel)]="it.dose" (input)="it.auto = false" [name]="'d' + $index" placeholder="1 tab" /></td>
+                            <td><input class="form-control form-control-sm" list="freqs" [(ngModel)]="it.frequency" (input)="it.auto = false" [name]="'f' + $index" placeholder="1+0+1" /></td>
+                            <td><input class="form-control form-control-sm" list="durs" [(ngModel)]="it.duration" (input)="it.auto = false" [name]="'u' + $index" placeholder="5 days" /></td>
+                            <td><input class="form-control form-control-sm" [(ngModel)]="it.instructions" (input)="it.auto = false" [name]="'i' + $index" placeholder="after meals" /></td>
                             <td><button type="button" class="btn btn-sm btn-outline-danger" (click)="removeItem($index)"><i class="bi bi-x-lg"></i></button></td>
                           </tr>
                         } @empty {
-                          <tr><td colspan="6" class="text-muted text-center py-3">No medicines added</td></tr>
+                          <tr><td colspan="6" class="text-muted text-center py-3">No medicines yet. Search a medicine above and select it.</td></tr>
                         }
                       </tbody>
                     </table>
                   </div>
                   <datalist id="freqs">@for (x of frequencies; track x) { <option [value]="x"></option> }</datalist>
+                  <datalist id="meds">@for (m of meds(); track m._id) { <option [value]="m.name">{{ medSummary(m) }}</option> }</datalist>
                   <datalist id="durs">@for (x of durations; track x) { <option [value]="x"></option> }</datalist>
+                  <div class="small text-muted mb-2"><i class="bi bi-lightbulb me-1"></i>Pick a saved medicine from the list and its dose, frequency and duration fill in by themselves. New medicines are saved to your list automatically. <a routerLink="/medicines">Manage medicines</a></div>
                   <div class="row g-3">
                     <div class="col-md-6"><label class="form-label">Advice</label><textarea class="form-control" rows="2" [ngModel]="rx().advice" (ngModelChange)="patchRx({ advice: $event })" name="advice"></textarea></div>
                     <div class="col-md-6"><label class="form-label">Tests advised</label><textarea class="form-control" rows="2" [ngModel]="rx().tests" (ngModelChange)="patchRx({ tests: $event })" name="tests"></textarea></div>
@@ -141,19 +169,34 @@ import { VisitHistoryComponent } from '../../shared/visit-history.component';
               </div>
             </fieldset>
           }
+          @if (canEdit()) {
+            <div class="d-flex justify-content-end gap-2 mb-4">
+              @if (rx()._id && canPrint()) {
+                <a class="btn btn-outline-dark" [routerLink]="['/prescriptions', rx()._id, 'print']" [queryParams]="{ auto: 'print' }"><i class="bi bi-printer me-1"></i>Print</a>
+                <a class="btn btn-outline-dark" [routerLink]="['/prescriptions', rx()._id, 'print']" [queryParams]="{ auto: 'pdf' }"><i class="bi bi-file-earmark-pdf me-1"></i>PDF</a>
+              }
+              @if (showRx() && canPrint()) {
+                <button class="btn btn-outline-success px-4" [disabled]="saving()" (click)="saveAndPdf()"><i class="bi bi-file-earmark-pdf me-1"></i>Submit &amp; PDF</button>
+              }
+              <button class="btn btn-success px-4" [disabled]="saving()" (click)="save()">@if (saving()) { <span class="spinner-border spinner-border-sm me-1"></span>Saving… } @else { <i class="bi bi-check2-circle me-1"></i>Save }</button>
+            </div>
+          }
         </div>
       </div>
     }
   `,
 })
-export class VisitDetailComponent implements OnInit {
+export class VisitDetailComponent implements OnInit, OnDestroy {
   private http = inject(HttpClient);
   private route = inject(ActivatedRoute);
+  private router = inject(Router);
   private auth = inject(AuthService);
 
   visit = signal<Visit | null>(null);
   previous = signal<Visit[]>([]);
   prevRx = signal<Prescription[]>([]);
+  /** The clinic's medicine list, used for suggestions and auto-fill. */
+  meds = signal<Medicine[]>([]);
   rx = signal<Partial<Prescription>>({});
   items = signal<RxItem[]>([]);
   showHistory = signal(false);
@@ -184,9 +227,12 @@ export class VisitDetailComponent implements OnInit {
     const rxOn = this.showRx();
     if (!rxOn) this.loaded.prevRx = this.loaded.thisRx = true;
 
+    window.addEventListener('pagehide', this.release);
     this.http.get<Visit>(`${API}/visits/${this.id}`).subscribe({
       next: (v) => {
         this.visit.set(v);
+        // Opening the form puts the patient "with doctor" (also after a page reload).
+        if (v.status === 'open' && this.canEdit()) this.http.post(`${API}/visits/${this.id}/start`, {}).subscribe({ error: () => {} });
         this.vitals = { ...(v.vitals ?? {}) };
         this.f = { complaint: v.complaint, history: v.history, examination: v.examination, diagnosis: v.diagnosis, notes: v.notes, followUpDate: v.followUpDate };
 
@@ -207,6 +253,7 @@ export class VisitDetailComponent implements OnInit {
     });
 
     if (rxOn) {
+      this.http.get<Medicine[]>(`${API}/medicines`).subscribe({ next: (m) => this.meds.set(m), error: () => {} });
       this.http.get<Prescription[]>(`${API}/prescriptions`, { params: { visitId: this.id } }).subscribe((list) => {
         if (list[0]) this.setRx(list[0]);
         this.loaded.thisRx = true;
@@ -214,6 +261,22 @@ export class VisitDetailComponent implements OnInit {
       });
     }
   }
+
+  ngOnDestroy() {
+    window.removeEventListener('pagehide', this.release);
+    this.release();
+  }
+
+  /** Leaving the form without saving puts the patient back to "waiting". Uses fetch keepalive so it also survives closing the tab. */
+  private release = () => {
+    if (this.visit()?.status !== 'open' || !this.canEdit()) return;
+    fetch(`${API}/visits/${this.id}/release`, {
+      method: 'POST',
+      keepalive: true,
+      headers: { Authorization: `Bearer ${this.auth.token()}`, 'Content-Type': 'application/json' },
+      body: '{}',
+    }).catch(() => {});
+  };
 
   /**
    * "Start checkup": a fresh visit gets the history, examination, diagnosis and medicines of the patient's
@@ -261,6 +324,64 @@ export class VisitDetailComponent implements OnInit {
     this.rx.update((r) => ({ ...r, ...p }));
   }
 
+  medQuery = signal('');
+  medOpen = signal(false);
+  /** Saved medicines matching what is typed in the search box (best 8). */
+  medMatches = computed(() => {
+    const q = this.medQuery().trim().toLowerCase();
+    return q ? this.meds().filter((m) => m.name.toLowerCase().includes(q)).slice(0, 8) : [];
+  });
+
+  /** A medicine was chosen from the search results: add a row with all its saved details filled in. */
+  addFromList(m: Medicine) {
+    this.items.update((l) => [
+      ...l,
+      { medicine: m.name, dose: m.dose ?? '', frequency: m.frequency ?? '', duration: m.duration ?? '', instructions: m.instructions ?? '', auto: true },
+    ]);
+    this.clearMedSearch();
+  }
+
+  /** The typed text is not in the list: add a blank row with that name (it is saved to the list when the prescription is saved). */
+  addTyped() {
+    const name = this.medQuery().trim();
+    if (!name) return;
+    this.items.update((l) => [...l, { medicine: name, dose: '', frequency: '', duration: '', instructions: '' }]);
+    this.clearMedSearch();
+  }
+
+  pickFirstMedicine() {
+    const first = this.medMatches()[0];
+    if (first) this.addFromList(first);
+    else this.addTyped();
+  }
+
+  closeMedList() {
+    setTimeout(() => this.medOpen.set(false), 150);
+  }
+
+  private clearMedSearch() {
+    this.medQuery.set('');
+    this.medOpen.set(false);
+  }
+
+  medSummary(m: Medicine): string {
+    return [m.dose, m.frequency, m.duration].filter(Boolean).join(' · ');
+  }
+
+  /** A medicine from the list was typed or picked: fill its dose, frequency, duration and instructions. */
+  onMedicine(it: RxItem, name: string) {
+    const m = this.meds().find((x) => x.name.toLowerCase() === String(name ?? '').trim().toLowerCase());
+    if (!m) return;
+    const untouched = !it.dose && !it.frequency && !it.duration && !it.instructions;
+    if (!untouched && !it.auto) return; // the doctor already typed details for this row: keep them
+    it.medicine = m.name;
+    it.dose = m.dose ?? '';
+    it.frequency = m.frequency ?? '';
+    it.duration = m.duration ?? '';
+    it.instructions = m.instructions ?? '';
+    it.auto = true;
+  }
+
   addItem() {
     this.items.update((l) => [...l, { medicine: '', dose: '', frequency: '', duration: '', instructions: '' }]);
   }
@@ -275,7 +396,7 @@ export class VisitDetailComponent implements OnInit {
   }
 
   /** One Save: stores the checkup and the prescription and marks the visit completed. */
-  async save() {
+  async save(): Promise<boolean> {
     this.error.set('');
     this.saving.set(true);
     try {
@@ -295,10 +416,18 @@ export class VisitDetailComponent implements OnInit {
       this.visit.set(v);
       this.copiedFrom.set(null);
       this.flash('Saved');
+      return true;
     } catch (e) {
       this.error.set(errorMessage(e));
+      return false;
     } finally {
       this.saving.set(false);
     }
+  }
+
+  /** Saves, then opens the prescription's PDF download (it returns to this visit afterwards). */
+  async saveAndPdf() {
+    if (!(await this.save()) || !this.rx()._id) return;
+    this.router.navigate(['/prescriptions', this.rx()._id, 'print'], { queryParams: { auto: 'pdf' } });
   }
 }

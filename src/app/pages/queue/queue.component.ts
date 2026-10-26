@@ -61,7 +61,7 @@ import { LoaderComponent } from '../../shared/loader.component';
 
     <div class="row g-3">
       @for (q of items(); track q._id) {
-        <div class="col-lg-6">
+        <div class="col-12 col-md-6 col-xl-4 col-xxl-3">
           <div class="card border-0 shadow-sm h-100" [class.border-start]="q.status === 'in-consultation'" [class.border-info]="q.status === 'in-consultation'" style="border-width: 4px !important">
             <div class="card-body">
               <div class="d-flex align-items-start gap-3">
@@ -78,15 +78,16 @@ import { LoaderComponent } from '../../shared/loader.component';
                   @if (q.reason) { <div class="mt-1"><i class="bi bi-chat-left-text me-1"></i>{{ q.reason }}</div> }
                   @if (q.patient.allergies) { <div class="small text-danger"><i class="bi bi-exclamation-triangle-fill me-1"></i>Allergy: {{ q.patient.allergies }}</div> }
                   @if (vitalsText(q)) { <div class="small mt-1"><span class="badge bg-light text-dark border">{{ vitalsText(q) }}</span></div> }
-                  <div class="d-flex justify-content-between align-items-center mt-2">
-                    @if (q.invoice) {
-                      <span class="small"><span class="badge" [class]="badge(q.invoice.status)">{{ q.invoice.status === 'paid' ? 'fee paid' : 'fee due ' + (q.invoice.balance | number: '1.0-0') }}</span></span>
-                    } @else { <span></span> }
+                  @if (q.invoice) {
+                    <div class="small mt-2"><span class="badge" [class]="badge(q.invoice.status)">{{ q.invoice.status === 'paid' ? 'fee paid' : 'fee due ' + (q.invoice.balance | number: '1.0-0') }}</span></div>
+                  }
+                  <div class="d-flex gap-2 mt-2">
                     @if (q.visitId) {
                       @if (tab() === 'pending') {
-                        <button class="btn btn-primary" [disabled]="busy() === q._id" (click)="open(q)">
+                        <button class="btn btn-primary btn-sm flex-grow-1" [disabled]="busy() === q._id" (click)="open(q)">
                           {{ q.status === 'in-consultation' ? 'Continue checkup' : 'Start checkup' }} <i class="bi bi-arrow-right"></i>
                         </button>
+                        <button class="btn btn-outline-danger btn-sm" title="Cancel this checkup" (click)="askCancel(q)"><i class="bi bi-x-circle"></i> Cancel</button>
                       } @else {
                         <a class="btn btn-outline-secondary btn-sm" [routerLink]="['/opd', q.visitId]">View</a>
                       }
@@ -107,6 +108,30 @@ import { LoaderComponent } from '../../shared/loader.component';
         </div>
       }
     </div>
+
+    @if (cancelling(); as c) {
+      <div class="modal d-block modal-backdrop-custom" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+          <form class="modal-content" (ngSubmit)="confirmCancel()">
+            <div class="modal-header"><h5 class="modal-title">Cancel checkup</h5><button type="button" class="btn-close" (click)="cancelling.set(null)"></button></div>
+            <div class="modal-body">
+              <p class="mb-2">Cancel the checkup of <strong>{{ c.patient.name }}</strong> (token #{{ c.token }})?</p>
+              <label class="form-label">Reason</label>
+              <div class="d-flex flex-wrap gap-1 mb-2">
+                @for (r of cancelReasons; track r) {
+                  <button type="button" class="btn btn-sm" [class.btn-secondary]="cancelReason === r" [class.btn-outline-secondary]="cancelReason !== r" (click)="cancelReason = r">{{ r }}</button>
+                }
+              </div>
+              <textarea class="form-control" rows="2" name="reason" [(ngModel)]="cancelReason" placeholder="Why is this checkup cancelled?"></textarea>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-light" (click)="cancelling.set(null)">Keep</button>
+              <button class="btn btn-danger" [disabled]="!cancelReason.trim() || busy() === c._id">Cancel checkup</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    }
   `,
 })
 export class QueueComponent implements OnInit, OnDestroy {
@@ -191,6 +216,33 @@ export class QueueComponent implements OnInit, OnDestroy {
     this.http.post(`${API}/visits/${u.visitId}/cancel`, {}).subscribe({
       next: () => this.loadOld(),
       error: (e) => this.error.set(errorMessage(e)),
+    });
+  }
+
+  cancelling = signal<QueueItem | null>(null);
+  cancelReason = '';
+  cancelReasons = ['Patient left', 'Doctor not available', 'Emergency', 'Wrong entry'];
+
+  askCancel(q: QueueItem) {
+    this.cancelReason = '';
+    this.cancelling.set(q);
+  }
+
+  confirmCancel() {
+    const q = this.cancelling();
+    if (!q?.visitId || !this.cancelReason.trim()) return;
+    this.busy.set(q._id);
+    this.http.post(`${API}/visits/${q.visitId}/cancel`, { reason: this.cancelReason.trim() }).subscribe({
+      next: () => {
+        this.busy.set('');
+        this.cancelling.set(null);
+        this.load();
+      },
+      error: (e) => {
+        this.busy.set('');
+        this.cancelling.set(null);
+        this.error.set(errorMessage(e));
+      },
     });
   }
 

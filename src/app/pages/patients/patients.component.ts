@@ -60,7 +60,7 @@ const BLOOD = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
                 <td>{{ p.city || '—' }}</td>
                 <td>{{ p.createdAt.slice(0, 10) }}</td>
                 <td class="text-end text-nowrap">
-                  <a class="btn btn-sm btn-outline-primary me-1" [routerLink]="['/patients', p._id]">Open</a>
+                  <a class="btn btn-sm btn-outline-primary me-1" [routerLink]="['/patients', p._id]" title="See all visits, prescriptions and bills of this patient"><i class="bi bi-clock-history me-1"></i>Visit history</a>
                   @if (archived) {
                     <button *hasPermission="'patients.delete'" class="btn btn-sm btn-outline-success" (click)="restore(p)">Restore</button>
                   } @else {

@@ -1,5 +1,5 @@
 import { HttpClient } from '@angular/common/http';
-import { Component, inject, model, signal } from '@angular/core';
+import { Component, inject, input, model, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { API } from '../core/api';
 import { PatientRef } from '../core/models';
@@ -22,7 +22,7 @@ import { PatientRef } from '../core/models';
     } @else {
       <div class="position-relative">
         <input class="form-control" [ngModel]="q" (ngModelChange)="onType($event)" [ngModelOptions]="{ standalone: true }"
-               placeholder="Search patient by name, phone or ID…" autocomplete="off" />
+               [placeholder]="placeholder()" autocomplete="off" />
         @if (results().length) {
           <div class="list-group position-absolute w-100 shadow" style="z-index: 1060; max-height: 260px; overflow: auto">
             @for (r of results(); track r._id) {
@@ -44,6 +44,10 @@ export class PatientPickerComponent {
 
   patient = model<PatientRef | null>(null);
   locked = model(false);
+  /** Limits the search to one field: name, cnic, phone or mrn. Empty searches all of them. */
+  by = input('');
+  private labels: Record<string, string> = { name: 'name', cnic: 'CNIC', phone: 'phone number', mrn: 'MR number' };
+  placeholder = () => (this.by() ? `Type the patient's ${this.labels[this.by()]}…` : 'Search patient by name, phone or ID…');
   results = signal<PatientRef[]>([]);
   searched = signal(false);
   q = '';
@@ -58,7 +62,7 @@ export class PatientPickerComponent {
       return;
     }
     this.timer = setTimeout(() => {
-      this.http.get<{ items: PatientRef[] }>(`${API}/patients`, { params: { q: v.trim(), limit: 8 } }).subscribe((r) => {
+      this.http.get<{ items: PatientRef[] }>(`${API}/patients`, { params: { q: v.trim(), limit: 8, ...(this.by() ? { by: this.by() } : {}) } }).subscribe((r) => {
         this.results.set(r.items);
         this.searched.set(true);
       });

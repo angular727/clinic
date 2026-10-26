@@ -19,7 +19,9 @@ export const MENU: MenuItem[] = [
   { label: 'Reception', icon: 'bi-person-plus', link: '/reception', section: 'Clinic', module: 'reception', permission: 'reception.create' },
   { label: 'Pending patients', icon: 'bi-people-fill', link: '/queue', section: 'Clinic', module: 'opd', permission: 'opd.view' },
   { label: 'Patients', icon: 'bi-people', link: '/patients', section: 'Clinic', module: 'patients', permission: 'patients.view' },
+  { label: 'Visits', icon: 'bi-journal-medical', link: '/opd', section: 'Clinic', module: 'opd', permission: 'opd.view' },
   { label: 'Billing', icon: 'bi-receipt', link: '/billing', section: 'Clinic', module: 'billing', permission: 'billing.view' },
+  { label: 'Medicines', icon: 'bi-capsule', link: '/medicines', section: 'Clinic', module: 'prescriptions', permission: 'prescriptions.create' },
   { label: 'Reports', icon: 'bi-bar-chart-line', link: '/reports', section: 'Clinic', module: 'reports', permission: 'reports.view' },
 
   { label: 'Users', icon: 'bi-person-gear', link: '/settings/users', section: 'Settings', module: 'users', permission: 'users.view' },

@@ -47,8 +47,21 @@ interface Slip {
               </ul>
 
               @if (existing) {
-                <label class="form-label">Find patient</label>
-                <app-patient-picker [patient]="picked" (patientChange)="onPicked($event)" />
+                <div class="row g-2 mb-2">
+                  <div class="col-md-4">
+                    <label class="form-label mb-0">Search by</label>
+                    <select class="form-select" name="searchBy" [(ngModel)]="searchBy">
+                      <option value="name">Name</option>
+                      <option value="cnic">CNIC</option>
+                      <option value="phone">Phone</option>
+                      <option value="mrn">MR Number</option>
+                    </select>
+                  </div>
+                  <div class="col-md-8">
+                    <label class="form-label mb-0">Find patient</label>
+                    <app-patient-picker [by]="searchBy" [patient]="picked" (patientChange)="onPicked($event)" />
+                  </div>
+                </div>
               }
 
               @if (pendingInfo(); as pd) {
@@ -99,11 +112,11 @@ interface Slip {
               <div class="row g-2 align-items-end">
                 <div class="col-md-5">
                   <label class="form-label mb-0">Doctor *</label>
-                  <select class="form-select" name="doctor" [(ngModel)]="doctorId" (ngModelChange)="onDoctor()">
-                    <option value="" disabled>Select doctor</option>
+                  <select class="form-select" name="doctor" [(ngModel)]="doctorId" (ngModelChange)="onDoctor()" [disabled]="!doctorsLoaded()">
+                    <option value="" disabled>{{ doctorsLoaded() ? 'Select doctor' : 'Loading doctors…' }}</option>
                     @for (d of doctors(); track d._id) { <option [value]="d._id">{{ d.name }}{{ d.specialization ? ' — ' + d.specialization : '' }}</option> }
                   </select>
-                  @if (!doctors().length) {
+                  @if (doctorsLoaded() && !doctors().length) {
                     <div class="form-text text-danger">
                       No doctors yet. Go to <a routerLink="/settings/users">Users</a>, add a user (or edit an existing one) and tick
                       <strong>"This user is a doctor"</strong>.
@@ -222,6 +235,8 @@ export class ReceptionComponent implements OnInit, OnDestroy {
   auth = inject(AuthService);
 
   doctors = signal<Doctor[]>([]);
+  doctorsLoaded = signal(false);
+  searchBy = 'name';
   queue = signal<QueueItem[]>([]);
   queueLoaded = signal(false);
   slip = signal<Slip | null>(null);
@@ -249,13 +264,17 @@ export class ReceptionComponent implements OnInit, OnDestroy {
   badge = (s: string) => `badge ${STATUS_CLASS[s] ?? 'bg-secondary'}`;
 
   ngOnInit() {
-    this.http.get<Doctor[]>(`${API}/users/doctors`).subscribe((d) => {
-      this.doctors.set(d);
-      if (d.length === 1) {
-        this.doctorId = d[0]._id;
-        this.onDoctor();
-      }
-      this.applyWantedDoctor();
+    this.http.get<Doctor[]>(`${API}/users/doctors`).subscribe({
+      next: (d) => {
+        this.doctors.set(d);
+        this.doctorsLoaded.set(true);
+        if (d.length === 1) {
+          this.doctorId = d[0]._id;
+          this.onDoctor();
+        }
+        this.applyWantedDoctor();
+      },
+      error: () => this.doctorsLoaded.set(true),
     });
     this.loadQueue();
     this.timer = setInterval(() => this.loadQueue(true), 15000);

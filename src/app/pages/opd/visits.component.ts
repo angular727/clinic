@@ -22,7 +22,20 @@ import { PatientPickerComponent } from '../../shared/patient-picker.component';
 
     <div class="card border-0 shadow-sm mb-3">
       <div class="card-body py-2 d-flex gap-3 align-items-end flex-wrap">
-        <div><label class="form-label small mb-0">Date</label><input type="date" class="form-control form-control-sm" [ngModel]="date" (ngModelChange)="date = $event; load()" /></div>
+        <div>
+          <label class="form-label small mb-0">Period</label>
+          <div class="btn-group btn-group-sm d-flex">
+            @for (p of presets; track p.key) {
+              <button type="button" class="btn" [class.btn-primary]="preset === p.key" [class.btn-outline-primary]="preset !== p.key" (click)="setPreset(p.key)">{{ p.label }}</button>
+            }
+          </div>
+        </div>
+        <div><label class="form-label small mb-0">From</label><input type="date" class="form-control form-control-sm" [ngModel]="from" (ngModelChange)="from = $event; preset = ''; load()" /></div>
+        <div><label class="form-label small mb-0">To</label><input type="date" class="form-control form-control-sm" [ngModel]="to" (ngModelChange)="to = $event; preset = ''; load()" /></div>
+        <div>
+          <label class="form-label small mb-0">Search</label>
+          <input class="form-control form-control-sm" placeholder="Name, MRN or phone" [ngModel]="q" (ngModelChange)="q = $event; searchChanged()" />
+        </div>
         <div>
           <label class="form-label small mb-0">Doctor</label>
           <select class="form-select form-select-sm" [ngModel]="doctorId" (ngModelChange)="doctorId = $event; load()">
@@ -36,8 +49,6 @@ import { PatientPickerComponent } from '../../shared/patient-picker.component';
             <option value="">All</option><option value="open">Open</option><option value="completed">Completed</option>
           </select>
         </div>
-        <button class="btn btn-sm btn-outline-secondary" (click)="date = ''; load()">All dates</button>
-        <button class="btn btn-sm btn-outline-secondary" (click)="date = todayStr; load()">Today</button>
       </div>
     </div>
 
@@ -53,8 +64,21 @@ import { PatientPickerComponent } from '../../shared/patient-picker.component';
                 <td><span class="fw-semibold">{{ v.patientId?.name }}</span><div class="small text-muted">{{ v.patientId?.mrn }} {{ age(v.patientId) ? '· ' + age(v.patientId) : '' }}</div></td>
                 <td>{{ v.doctorId?.name }}</td>
                 <td>{{ v.diagnosis || '—' }}</td>
-                <td><span class="badge" [class]="badge(v.status)">{{ v.status }}</span></td>
-                <td class="text-end"><a class="btn btn-sm btn-outline-primary" [routerLink]="['/opd', v._id]">Open</a></td>
+                <td>
+                  <span class="badge" [class]="badge(v.status)">{{ v.status }}</span>
+                  @if (v.status === 'cancelled' && v.cancelReason) { <div class="small text-muted mt-1">{{ v.cancelReason }}</div> }
+                </td>
+                <td class="text-end text-nowrap">
+                  @if (v.rxId && canPrint()) {
+                    <a class="btn btn-sm btn-outline-dark me-1" [routerLink]="['/prescriptions', v.rxId, 'print']" [queryParams]="{ auto: 'print' }" title="Print prescription"><i class="bi bi-printer"></i></a>
+                    <a class="btn btn-sm btn-outline-dark me-1" [routerLink]="['/prescriptions', v.rxId, 'print']" [queryParams]="{ auto: 'pdf' }" title="Download PDF"><i class="bi bi-file-earmark-pdf"></i> PDF</a>
+                  }
+                  @if (v.status === 'open') {
+                    <a class="btn btn-sm btn-outline-primary" [routerLink]="['/opd', v._id]">Open</a>
+                  } @else {
+                    <a class="btn btn-sm btn-outline-primary" [routerLink]="['/visits', v._id]">View</a>
+                  }
+                </td>
               </tr>
             } @empty { <tr><td colspan="7" class="text-center text-muted py-4">No visits found</td></tr> }
           </tbody>
@@ -98,13 +122,24 @@ export class VisitsComponent implements OnInit {
   formError = signal('');
   saving = signal(false);
 
-  todayStr = today();
-  date = today();
+  presets = [
+    { key: 'today', label: 'Today' },
+    { key: 'yesterday', label: 'Yesterday' },
+    { key: 'week', label: 'Last 7 days' },
+    { key: 'month', label: 'This month' },
+    { key: 'all', label: 'All' },
+  ];
+  preset = 'today';
+  from = today();
+  to = today();
+  q = '';
+  private searchTimer: any;
   doctorId = '';
   status = '';
   patient: PatientRef | null = null;
   formDoctor = '';
 
+  canPrint = () => this.auth.hasModule('prescriptions') && this.auth.has('prescriptions.print');
   age = ageText;
   badge = (s: string) => `badge ${STATUS_CLASS[s] ?? 'bg-secondary'}`;
 
@@ -119,7 +154,9 @@ export class VisitsComponent implements OnInit {
 
   load() {
     const params: Record<string, string> = {};
-    if (this.date) params['date'] = this.date;
+    if (this.from) params['from'] = this.from;
+    if (this.to) params['to'] = this.to;
+    if (this.q.trim()) params['q'] = this.q.trim();
     if (this.doctorId) params['doctorId'] = this.doctorId;
     if (this.status) params['status'] = this.status;
     this.http.get<Visit[]>(`${API}/visits`, { params }).subscribe({
@@ -129,6 +166,28 @@ export class VisitsComponent implements OnInit {
       },
       error: (e) => this.error.set(errorMessage(e)),
     });
+  }
+
+  setPreset(key: string) {
+    this.preset = key;
+    const first = new Date();
+    first.setDate(1);
+    const monthStart = `${first.getFullYear()}-${String(first.getMonth() + 1).padStart(2, '0')}-01`;
+    const [from, to] =
+      key === 'today' ? [today(), today()]
+      : key === 'yesterday' ? [today(-1), today(-1)]
+      : key === 'week' ? [today(-6), today()]
+      : key === 'month' ? [monthStart, today()]
+      : ['', ''];
+    this.from = from;
+    this.to = to;
+    this.load();
+  }
+
+  /** Waits for a pause in typing before searching. */
+  searchChanged() {
+    clearTimeout(this.searchTimer);
+    this.searchTimer = setTimeout(() => this.load(), 300);
   }
 
   openForm(p?: PatientRef) {

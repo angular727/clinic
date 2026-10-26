@@ -131,6 +131,9 @@ export interface Visit {
   patientId: any;
   doctorId: any;
   appointmentId?: string;
+  /** Set by the visits list when the visit has a prescription. */
+  rxId?: string;
+  cancelReason?: string;
   date: string;
   status: 'open' | 'completed' | 'cancelled';
   vitals?: Vitals;
@@ -142,7 +145,18 @@ export interface Visit {
   followUpDate?: string;
 }
 
+export interface Medicine {
+  _id: string;
+  name: string;
+  dose?: string;
+  frequency?: string;
+  duration?: string;
+  instructions?: string;
+}
+
 export interface RxItem {
+  /** Set while the row was filled from the medicine list; cleared when the doctor edits a detail by hand. */
+  auto?: boolean;
   medicine: string;
   dose?: string;
   frequency?: string;

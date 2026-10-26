@@ -49,6 +49,11 @@ export const routes: Routes = [
         loadComponent: () => import('./pages/opd/visits.component').then((m) => m.VisitsComponent),
       },
       {
+        path: 'visits/:id',
+        canActivate: [accessGuard('opd', 'opd.view')],
+        loadComponent: () => import('./pages/opd/visit-view.component').then((m) => m.VisitViewComponent),
+      },
+      {
         path: 'opd/:id',
         canActivate: [accessGuard('opd', 'opd.view')],
         loadComponent: () => import('./pages/opd/visit-detail.component').then((m) => m.VisitDetailComponent),
@@ -57,6 +62,11 @@ export const routes: Routes = [
         path: 'prescriptions/:id/print',
         canActivate: [accessGuard('prescriptions', 'prescriptions.view')],
         loadComponent: () => import('./pages/prescriptions/rx-print.component').then((m) => m.RxPrintComponent),
+      },
+      {
+        path: 'medicines',
+        canActivate: [accessGuard('prescriptions', 'prescriptions.create')],
+        loadComponent: () => import('./pages/medicines/medicines.component').then((m) => m.MedicinesComponent),
       },
       {
         path: 'billing',
