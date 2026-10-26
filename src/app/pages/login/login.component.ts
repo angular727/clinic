@@ -53,7 +53,7 @@ import { AuthService } from '../../core/auth.service';
   `,
   styles: `
     .login-wrap { min-height: 100vh; background: linear-gradient(135deg, #0f4c4c, #14b8a6); }
-    .card { width: 380px; max-width: 92vw; border-radius: 1rem; }
+    .card { width: 680px; max-width: 92vw; border-radius: 1rem; }
     .logo { font-size: 2.5rem; color: #14b8a6; }
     .btn-primary { background: #0f4c4c; border-color: #0f4c4c; }
     .btn-primary:hover { background: #14b8a6; border-color: #14b8a6; }
