@@ -62,38 +62,39 @@ import { LoaderComponent } from '../../shared/loader.component';
 
     <div class="row g-3">
       @for (q of items(); track q._id) {
-        <div class="col-12 col-md-6 col-xl-4 col-xxl-3">
+        <div class="col-12 col-md-6 col-xl-4">
           <div class="card border-0 shadow-sm h-100" [class.border-start]="q.status === 'in-consultation'" [class.border-info]="q.status === 'in-consultation'" style="border-width: 4px !important">
-            <div class="card-body">
-              <div class="d-flex align-items-start gap-3">
-                <div class="text-center"><div class="badge bg-dark fs-5">#{{ q.token }}</div><div class="small text-muted mt-1">{{ waited(q) }}</div></div>
-                <div class="flex-grow-1">
-                  <div class="d-flex justify-content-between flex-wrap">
-                    <div>
-                      <span class="fs-5 fw-semibold">{{ q.patient.name }}</span>
-                      <span class="text-muted small ms-1">{{ q.patient.mrn }}</span>
-                    </div>
-                    <span class="badge align-self-start" [class]="badge(q.status)">{{ q.status === 'in-consultation' ? 'in consultation' : q.status }}</span>
-                  </div>
-                  <div class="small text-muted text-capitalize">{{ q.patient.gender }}{{ age(q.patient) ? ' · ' + age(q.patient) : '' }}{{ q.doctor.name && !doctorId ? ' · ' + q.doctor.name : '' }}</div>
-                  @if (q.reason) { <div class="mt-1"><i class="bi bi-chat-left-text me-1"></i>{{ q.reason }}</div> }
-                  @if (q.patient.allergies) { <div class="small text-danger"><i class="bi bi-exclamation-triangle-fill me-1"></i>Allergy: {{ q.patient.allergies }}</div> }
-                  @if (vitalsText(q)) { <div class="small mt-1"><span class="badge bg-light text-dark border">{{ vitalsText(q) }}</span></div> }
-                  @if (q.invoice) {
-                    <div class="small mt-2"><span class="badge" [class]="badge(q.invoice.status)">{{ q.invoice.status === 'paid' ? 'fee paid' : 'fee due ' + (q.invoice.balance | number: '1.0-0') }}</span></div>
-                  }
-                  <div class="d-flex gap-2 mt-2">
-                    @if (q.visitId) {
-                      @if (tab() === 'pending') {
-                        <button class="btn btn-primary btn-sm flex-grow-1" [disabled]="busy() === q._id" (click)="open(q)">
-                          {{ q.status === 'in-consultation' ? 'Continue checkup' : 'Start checkup' }} <i class="bi bi-arrow-right"></i>
-                        </button>
-                        <button class="btn btn-outline-danger btn-sm" title="Cancel this checkup" (click)="askCancel(q)"><i class="bi bi-x-circle"></i> Cancel</button>
-                      } @else {
-                        <a class="btn btn-outline-secondary btn-sm" [routerLink]="['/opd', q.visitId]">View</a>
-                      }
+            <div class="card-body d-flex flex-column gap-1">
+              <div class="d-flex align-items-center gap-2">
+                <span class="badge bg-dark fs-6 flex-shrink-0">#{{ q.token }}</span>
+                <div class="flex-grow-1 text-truncate">
+                  <span class="fw-semibold">{{ q.patient.name }}</span>
+                  <span class="text-muted small ms-1">{{ q.patient.mrn }}</span>
+                </div>
+                <span class="badge flex-shrink-0" [class]="badge(q.status)">{{ q.status === 'in-consultation' ? 'in consultation' : q.status }}</span>
+              </div>
+              <div class="small text-muted text-capitalize">
+                {{ q.patient.gender }}{{ age(q.patient) ? ' · ' + age(q.patient) : '' }}{{ q.doctor.name && !doctorId ? ' · ' + q.doctor.name : '' }}
+                <span class="ms-1 text-nowrap"><i class="bi bi-clock me-1"></i>{{ waited(q) }}</span>
+              </div>
+              @if (q.reason) { <div class="small"><i class="bi bi-chat-left-text me-1"></i>{{ q.reason }}</div> }
+              @if (q.patient.allergies) { <div class="small text-danger"><i class="bi bi-exclamation-triangle-fill me-1"></i>Allergy: {{ q.patient.allergies }}</div> }
+              @if (vitalsText(q)) { <div class="small text-muted border rounded px-2 py-1 bg-light">{{ vitalsText(q) }}</div> }
+              <div class="mt-auto pt-2">
+                @if (q.invoice) {
+                  <div class="mb-2"><span class="badge" [class]="badge(q.invoice.status)">{{ q.invoice.status === 'paid' ? 'fee paid' : 'fee due ' + (q.invoice.balance | number: '1.0-0') }}</span></div>
+                }
+                <div class="d-flex gap-2">
+                  @if (q.visitId) {
+                    @if (tab() === 'pending') {
+                      <button class="btn btn-primary btn-sm flex-grow-1" [disabled]="busy() === q._id" (click)="open(q)">
+                        {{ q.status === 'in-consultation' ? 'Continue checkup' : 'Start checkup' }} <i class="bi bi-arrow-right"></i>
+                      </button>
+                      <button class="btn btn-outline-danger btn-sm flex-shrink-0" title="Cancel this checkup" (click)="askCancel(q)"><i class="bi bi-x-circle"></i> Cancel</button>
+                    } @else {
+                      <a class="btn btn-outline-secondary btn-sm" [routerLink]="['/opd', q.visitId]">View</a>
                     }
-                  </div>
+                  }
                 </div>
               </div>
             </div>
