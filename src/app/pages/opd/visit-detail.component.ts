@@ -84,7 +84,7 @@ import { VisitHistoryComponent } from '../../shared/visit-history.component';
                   <div class="col-6 col-md-3"><label class="form-label small mb-0">Weight (kg)</label><input type="number" step="0.1" class="form-control" [(ngModel)]="vitals.weight" name="weight" /></div>
                   <div class="col-6 col-md-3"><label class="form-label small mb-0">Height (cm)</label><input type="number" class="form-control" [(ngModel)]="vitals.height" name="height" /></div>
                   <div class="col-6 col-md-3"><label class="form-label small mb-0">Sugar (mg/dL)</label><input type="number" class="form-control" [(ngModel)]="vitals.sugar" name="sugar" /></div>
-                  <div class="col-6 col-md-3"><label class="form-label small mb-0">BMI</label><input class="form-control" [value]="bmiText()" disabled /></div>
+                  <div class="col-6 col-md-3"><label class="form-label small mb-0">BMI <span class="text-muted">(automatic)</span></label><input class="form-control" [value]="bmiText()" placeholder="needs weight &amp; height" title="Calculated from weight and height" disabled /></div>
                 </div>
               </div>
             </div>
