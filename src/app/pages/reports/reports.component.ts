@@ -233,15 +233,24 @@ interface Summary {
           </div>
 
           @if (r.summary.byDoctor.length > 1) {
-            <div class="fw-semibold mb-1">By doctor</div>
-            <table class="table table-sm mb-3" style="max-width: 520px">
-              <thead class="table-light"><tr><th>Doctor</th><th class="text-end">Checkups</th><th class="text-end">Billed</th><th class="text-end">Received</th></tr></thead>
-              <tbody>
-                @for (d of r.summary.byDoctor; track d.doctor) {
-                  <tr><td>{{ d.doctor }}</td><td class="text-end">{{ d.visits }}</td><td class="text-end">{{ d.billed | number: '1.0-0' }}</td><td class="text-end">{{ d.paid | number: '1.0-0' }}</td></tr>
-                }
-              </tbody>
-            </table>
+            <div class="fw-semibold mb-2">By doctor</div>
+            <div class="row g-3 mb-4">
+              @for (d of r.summary.byDoctor; track d.doctor) {
+                <div class="col-md-6 col-xl-4">
+                  <div class="card border-0 shadow-sm h-100" style="border-left: 4px solid #0f766e !important">
+                    <div class="card-body py-3">
+                      <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="fw-semibold"><i class="bi bi-person-badge me-1 text-muted"></i>{{ d.doctor }}</span>
+                        <span class="badge bg-secondary-subtle text-secondary-emphasis">{{ d.visits }} checkup{{ d.visits === 1 ? '' : 's' }}</span>
+                      </div>
+                      <div class="d-flex justify-content-between small text-muted"><span>Received {{ d.paid | number: '1.0-0' }}</span><span>Billed {{ d.billed | number: '1.0-0' }}</span></div>
+                      <div class="progress mt-1" style="height: 6px"><div class="progress-bar" style="background:#14b8a6" [style.width.%]="d.billed ? (d.paid / d.billed) * 100 : 0"></div></div>
+                      @if (d.billed - d.paid > 0) { <div class="small text-danger mt-1">Due {{ d.billed - d.paid | number: '1.0-0' }}</div> }
+                    </div>
+                  </div>
+                </div>
+              }
+            </div>
           }
 
           <div class="table-responsive">

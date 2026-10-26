@@ -26,6 +26,7 @@ import { LoaderComponent } from '../../shared/loader.component';
       </div>
     </div>
     @if (error()) { <div class="alert alert-danger py-2">{{ error() }}</div> }
+    @if (notice()) { <div class="alert alert-success py-2">{{ notice() }}</div> }
 
     @if (others() > 0) {
       <div class="alert alert-info py-2 d-flex justify-content-between align-items-center">
@@ -116,6 +117,12 @@ import { LoaderComponent } from '../../shared/loader.component';
             <div class="modal-header"><h5 class="modal-title">Cancel checkup</h5><button type="button" class="btn-close" (click)="cancelling.set(null)"></button></div>
             <div class="modal-body">
               <p class="mb-2">Cancel the checkup of <strong>{{ c.patient.name }}</strong> (token #{{ c.token }})?</p>
+              @if (c.invoice) {
+                <div class="alert alert-warning py-2 small">
+                  @if (c.invoice.paid > 0) { The fee paid ({{ c.invoice.paid | number: '1.0-0' }}) will be refunded and the bill cancelled. }
+                  @else { The unpaid bill ({{ c.invoice.balance | number: '1.0-0' }}) will be cancelled. }
+                </div>
+              }
               <label class="form-label">Reason</label>
               <div class="d-flex flex-wrap gap-1 mb-2">
                 @for (r of cancelReasons; track r) {
@@ -219,6 +226,7 @@ export class QueueComponent implements OnInit, OnDestroy {
     });
   }
 
+  notice = signal('');
   cancelling = signal<QueueItem | null>(null);
   cancelReason = '';
   cancelReasons = ['Patient left', 'Doctor not available', 'Emergency', 'Wrong entry'];
@@ -232,10 +240,12 @@ export class QueueComponent implements OnInit, OnDestroy {
     const q = this.cancelling();
     if (!q?.visitId || !this.cancelReason.trim()) return;
     this.busy.set(q._id);
-    this.http.post(`${API}/visits/${q.visitId}/cancel`, { reason: this.cancelReason.trim() }).subscribe({
-      next: () => {
+    this.http.post<{ refunded?: number }>(`${API}/visits/${q.visitId}/cancel`, { reason: this.cancelReason.trim() }).subscribe({
+      next: (r) => {
         this.busy.set('');
         this.cancelling.set(null);
+        this.notice.set(r.refunded ? `Checkup cancelled. ${r.refunded} refunded to ${q.patient.name}.` : 'Checkup cancelled.');
+        setTimeout(() => this.notice.set(''), 5000);
         this.load();
       },
       error: (e) => {
