@@ -5,7 +5,6 @@ import { RouterLink } from '@angular/router';
 import { API } from '../../core/api';
 import { AuthService } from '../../core/auth.service';
 import { QueueItem } from '../../core/models';
-import { LoaderComponent } from '../../shared/loader.component';
 
 interface Dash {
   today: string;
@@ -18,7 +17,7 @@ interface Dash {
 
 @Component({
   selector: 'app-dashboard',
-  imports: [DecimalPipe, RouterLink, LoaderComponent],
+  imports: [DecimalPipe, RouterLink],
   styles: `
     .hero { background: linear-gradient(135deg, #0f4c4c 0%, #0f766e 100%); color: #fff; border-radius: 1rem; padding: 1.5rem 1.75rem; }
     .hero .sub { opacity: 0.8; }
@@ -48,37 +47,35 @@ interface Dash {
         </div>
       </div>
 
-      @if (!data()) { <app-loader text="Loading today's numbers…" /> }
-
       <div class="row row-cols-2 row-cols-md-3 row-cols-xl-5 g-3 mb-4">
-        @if (data()?.totalPatients !== undefined) {
+        @if (can('patients', 'patients.view')) {
           <div class="col"><a routerLink="/patients" class="tile d-flex gap-3 align-items-center">
             <span class="icon" style="background:#e0f2f1;color:#0f766e"><i class="bi bi-people"></i></span>
-            <div><div class="label">Total patients</div><div class="value">{{ data()!.totalPatients }}</div></div>
+            <div><div class="label">Total patients</div><div class="value">@if (data(); as d) { {{ d.totalPatients }} } @else { <span class="placeholder-glow"><span class="placeholder rounded" style="width: 60px; height: 1.6rem"></span></span> }</div></div>
           </a></div>
         }
-        @if (data()?.appointments; as a) {
+        @if (can('appointments', 'appointments.view')) {
           <div class="col"><a routerLink="/queue" class="tile d-flex gap-3 align-items-center">
             <span class="icon" style="background:#e0f2fe;color:#0369a1"><i class="bi bi-person-lines-fill"></i></span>
-            <div><div class="label">Today's patients</div><div class="value">{{ total(a) }}</div><div class="small text-muted">{{ a['waiting'] || 0 }} waiting · {{ a['completed'] || 0 }} done</div></div>
+            <div><div class="label">Today's patients</div>@if (data()?.appointments; as a) { <div class="value">{{ total(a) }}</div><div class="small text-muted">{{ a['waiting'] || 0 }} waiting · {{ a['completed'] || 0 }} done</div> } @else { <div class="value"><span class="placeholder-glow"><span class="placeholder rounded" style="width: 60px; height: 1.6rem"></span></span></div> }</div>
           </a></div>
         }
-        @if (data()?.visitsToday !== undefined) {
+        @if (can('opd', 'opd.view')) {
           <div class="col"><a routerLink="/opd" class="tile d-flex gap-3 align-items-center">
             <span class="icon" style="background:#ede9fe;color:#6d28d9"><i class="bi bi-journal-medical"></i></span>
-            <div><div class="label">Visits today</div><div class="value">{{ data()!.visitsToday }}</div></div>
+            <div><div class="label">Visits today</div><div class="value">@if (data(); as d) { {{ d.visitsToday }} } @else { <span class="placeholder-glow"><span class="placeholder rounded" style="width: 60px; height: 1.6rem"></span></span> }</div></div>
           </a></div>
         }
-        @if (data()?.collectedToday !== undefined) {
+        @if (can('billing', 'billing.view')) {
           <div class="col"><a routerLink="/billing" class="tile d-flex gap-3 align-items-center">
             <span class="icon" style="background:#dcfce7;color:#15803d"><i class="bi bi-cash-coin"></i></span>
-            <div><div class="label">Collected today</div><div class="value">{{ data()!.collectedToday | number: '1.0-0' }}</div></div>
+            <div><div class="label">Collected today</div><div class="value">@if (data(); as d) { {{ d.collectedToday | number: '1.0-0' }} } @else { <span class="placeholder-glow"><span class="placeholder rounded" style="width: 60px; height: 1.6rem"></span></span> }</div></div>
           </a></div>
         }
-        @if (data()?.dues; as d) {
+        @if (can('billing', 'billing.view')) {
           <div class="col"><a routerLink="/billing" [queryParams]="{ status: 'due' }" class="tile d-flex gap-3 align-items-center">
             <span class="icon" style="background:#fee2e2;color:#b91c1c"><i class="bi bi-exclamation-circle"></i></span>
-            <div><div class="label">Outstanding dues</div><div class="value text-danger">{{ d.balance | number: '1.0-0' }}</div><div class="small text-muted">{{ d.count }} invoice(s)</div></div>
+            <div><div class="label">Outstanding dues</div>@if (data()?.dues; as d) { <div class="value text-danger">{{ d.balance | number: '1.0-0' }}</div><div class="small text-muted">{{ d.count }} invoice(s)</div> } @else { <div class="value"><span class="placeholder-glow"><span class="placeholder rounded" style="width: 60px; height: 1.6rem"></span></span></div> }</div>
           </a></div>
         }
       </div>
@@ -101,7 +98,11 @@ interface Dash {
                 <span class="badge" [class]="q.status === 'in-consultation' ? 'bg-info' : 'bg-warning text-dark'">{{ q.status === 'in-consultation' ? 'with doctor' : 'waiting' }}</span>
               </a>
             } @empty {
-              <div class="list-group-item text-muted text-center py-4">No patients waiting right now.</div>
+              @if (waitingLoaded()) {
+                <div class="list-group-item text-muted text-center py-4">No patients waiting right now.</div>
+              } @else {
+                @for (i of [1, 2, 3]; track i) { <div class="list-group-item placeholder-glow py-3"><span class="placeholder col-8 rounded"></span></div> }
+              }
             }
           </div>
         </div>
@@ -114,7 +115,9 @@ export class DashboardComponent implements OnInit {
   auth = inject(AuthService);
   data = signal<Dash | null>(null);
   waiting = signal<QueueItem[]>([]);
+  waitingLoaded = signal(false);
 
+  can = (m: string, p: string) => this.auth.hasModule(m) && this.auth.has(p);
   total = (a: Record<string, number>) => Object.values(a).reduce((s, n) => s + n, 0);
   canQueue = () => this.auth.hasModule('opd') && this.auth.has('opd.view');
 
@@ -131,7 +134,7 @@ export class DashboardComponent implements OnInit {
     if (this.auth.isSuperAdmin()) return;
     this.http.get<Dash>(`${API}/dashboard`).subscribe((d) => this.data.set(d));
     if (this.canQueue()) {
-      this.http.get<QueueItem[]>(`${API}/reception/queue`).subscribe({ next: (q) => this.waiting.set(q.slice(0, 6)), error: () => {} });
+      this.http.get<QueueItem[]>(`${API}/reception/queue`).subscribe({ next: (q) => { this.waiting.set(q.slice(0, 6)); this.waitingLoaded.set(true); }, error: () => this.waitingLoaded.set(true) });
     }
   }
 }
