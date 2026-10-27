@@ -6,7 +6,7 @@ import { copyToClipboard } from '../../core/util';
 import { PasswordInputComponent } from '../../shared/password-input.component';
 import { API, errorMessage } from '../../core/api';
 import { HasPermissionDirective } from '../../core/has-permission.directive';
-import { ClinicUser, Role } from '../../core/models';
+import { ClinicUser, PermissionGroup, Role } from '../../core/models';
 import { AuthService } from '../../core/auth.service';
 import { LoadingService } from '../../core/loading.service';
 
@@ -89,9 +89,41 @@ import { LoadingService } from '../../core/loading.service';
                 <label class="form-label">Role *</label>
                 <select class="form-select" name="roleId" [(ngModel)]="form.roleId" (ngModelChange)="onRoleChange()" required>
                   <option value="" disabled>Select role</option>
-                  @for (r of roles(); track r._id) { <option [value]="r._id">{{ r.name }}</option> }
+                  @for (r of roles(); track r._id) { <option [ngValue]="r._id">{{ r.name }}</option> }
                 </select>
               </div>
+              @if (editingId && isAdmin() && !roleIsAdmin()) {
+                <div class="mb-3 p-2 border rounded">
+                  <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="customAccess" name="customAccess" [(ngModel)]="form.customAccess" (ngModelChange)="onCustomAccess()" />
+                    <label class="form-check-label fw-semibold" for="customAccess">Custom access for this user</label>
+                  </div>
+                  @if (!form.customAccess) {
+                    <div class="form-text">Off: this user gets everything the <strong>{{ roleName() }}</strong> role allows. Turn on to choose which menus and actions only this user has.</div>
+                  } @else {
+                    <div class="table-responsive mt-2">
+                      <table class="table table-sm align-middle mb-1">
+                        <tbody>
+                          @for (g of groups(); track g.key) {
+                            <tr>
+                              <td class="fw-semibold" style="width: 28%">{{ g.name }}</td>
+                              <td>
+                                @for (a of g.actions; track a) {
+                                  <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="checkbox" [id]="'ca' + g.key + a" [name]="'ca' + g.key + a" [checked]="access.has(g.key + '.' + a)" (change)="toggleAccess(g.key + '.' + a)" />
+                                    <label class="form-check-label text-capitalize" [for]="'ca' + g.key + a">{{ a }}</label>
+                                  </div>
+                                }
+                              </td>
+                            </tr>
+                          }
+                        </tbody>
+                      </table>
+                    </div>
+                    <div class="form-text">A menu shows only when the user has at least its "view" access.</div>
+                  }
+                </div>
+              }
               <div class="form-check form-switch mb-3">
                 <input class="form-check-input" type="checkbox" id="isDoc" name="isDoctor" [(ngModel)]="form.isDoctor" />
                 <label class="form-check-label" for="isDoc">This user is a doctor (appears in appointments, visits and billing)</label>
@@ -201,10 +233,27 @@ export class UsersComponent implements OnInit {
   ngOnInit() {
     this.load();
     this.http.get<Role[]>(`${API}/roles`).subscribe((r) => this.roles.set(r));
+    if (this.isAdmin()) this.http.get<PermissionGroup[]>(`${API}/roles/available-permissions`).subscribe((g) => this.groups.set(g));
+  }
+
+  groups = signal<PermissionGroup[]>([]);
+  access = new Set<string>();
+
+  private selectedRole = () => this.roles().find((r) => r._id === this.form.roleId);
+  roleIsAdmin = () => !!this.selectedRole()?.isAdmin;
+  roleName = () => this.selectedRole()?.name ?? '';
+
+  toggleAccess(p: string) {
+    this.access.has(p) ? this.access.delete(p) : this.access.add(p);
+  }
+
+  /** Turning custom access on starts from what the role already allows, so the admin only removes or adds. */
+  onCustomAccess() {
+    if (this.form.customAccess && !this.access.size) this.access = new Set(this.selectedRole()?.permissions ?? []);
   }
 
   private emptyForm() {
-    return { name: '', username: '', password: '', roleId: '', phone: '', email: '', isDoctor: false, specialization: '', qualification: '', registrationNo: '', consultationFee: 0, headerLines: '', footerEn: '', footerUr: '' };
+    return { customAccess: false, name: '', username: '', password: '', roleId: '', phone: '', email: '', isDoctor: false, specialization: '', qualification: '', registrationNo: '', consultationFee: 0, headerLines: '', footerEn: '', footerUr: '' };
   }
 
   load() {
@@ -218,8 +267,9 @@ export class UsersComponent implements OnInit {
     this.formError.set('');
     this.editingId = u?._id ?? '';
     this.form = u
-      ? { name: u.name, username: u.username, password: '', roleId: u.roleId?._id ?? '', phone: u.phone ?? '', email: u.email ?? '', isDoctor: !!u.isDoctor, specialization: u.specialization ?? '', qualification: u.qualification ?? '', registrationNo: u.registrationNo ?? '', consultationFee: u.consultationFee ?? 0, headerLines: u.headerLines ?? '', footerEn: u.footerEn ?? '', footerUr: u.footerUr ?? '' }
+      ? { customAccess: !!u.customAccess, name: u.name, username: u.username, password: '', roleId: u.roleId?._id ?? '', phone: u.phone ?? '', email: u.email ?? '', isDoctor: !!u.isDoctor, specialization: u.specialization ?? '', qualification: u.qualification ?? '', registrationNo: u.registrationNo ?? '', consultationFee: u.consultationFee ?? 0, headerLines: u.headerLines ?? '', footerEn: u.footerEn ?? '', footerUr: u.footerUr ?? '' }
       : this.emptyForm();
+    this.access = new Set(u?.customAccess ? u.customPermissions : []);
     this.showForm.set(true);
   }
 
@@ -232,6 +282,10 @@ export class UsersComponent implements OnInit {
     this.saving.set(true);
     const body: Record<string, unknown> = { name: f.name, roleId: f.roleId, phone: f.phone, email: f.email, isDoctor: f.isDoctor, specialization: f.specialization, qualification: f.qualification, registrationNo: f.registrationNo, consultationFee: Number(f.consultationFee) || 0, headerLines: f.headerLines, footerEn: f.footerEn, footerUr: f.footerUr };
     if (f.password) body['password'] = f.password;
+    if (this.editingId && this.isAdmin() && !this.roleIsAdmin()) {
+      body['customAccess'] = f.customAccess;
+      body['customPermissions'] = f.customAccess ? [...this.access] : [];
+    }
     const req = this.editingId
       ? this.http.put(`${API}/users/${this.editingId}`, body)
       : this.http.post(`${API}/users`, { ...body, username: f.username });

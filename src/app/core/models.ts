@@ -59,6 +59,8 @@ export interface ClinicUser {
   footerEn?: string;
   footerUr?: string;
   hasStoredPassword?: boolean;
+  customAccess?: boolean;
+  customPermissions?: string[];
   roleId: { _id: string; name: string; isAdmin: boolean } | null;
 }
 
@@ -218,6 +220,7 @@ export interface Invoice {
 export interface UnfinishedVisit {
   _id: string;
   visitId: string;
+  token?: number | null;
   date: string;
   reason?: string;
   vitals?: Vitals;

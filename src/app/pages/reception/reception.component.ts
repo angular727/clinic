@@ -7,13 +7,13 @@ import { API, errorMessage } from '../../core/api';
 import { AuthService } from '../../core/auth.service';
 import { Doctor, PatientRef, QueueItem, Vitals } from '../../core/models';
 import { silent } from '../../core/loading.interceptor';
-import { PAY_METHODS, STATUS_CLASS, ageText } from '../../core/util';
+import { PAY_METHODS, STATUS_CLASS, ageText, today } from '../../core/util';
 import { PatientPickerComponent } from '../../shared/patient-picker.component';
 
 interface PatientSummary {
   patient: PatientRef & { fatherName?: string; cnic?: string; city?: string };
   last: { date: string; visitNo: string; doctor?: { _id: string; name: string }; vitals?: Vitals; complaint?: string; diagnosis?: string } | null;
-  pending: { token: number; status: string; doctor?: { _id: string; name: string } } | null;
+  pending: { token: number | null; status: string; date?: string; doctor?: { _id: string; name: string } } | null;
 }
 
 interface Slip {
@@ -67,7 +67,7 @@ interface Slip {
               @if (pendingInfo(); as pd) {
                 <div class="alert alert-warning py-2 mt-2 mb-2">
                   <i class="bi bi-exclamation-triangle-fill me-1"></i>
-                  <strong>Checkup already pending</strong>: token #{{ pd.token }} with {{ pd.doctor?.name }} ({{ pd.status === 'in-consultation' ? 'with the doctor now' : 'waiting' }}). No new slip is needed.
+                  <strong>Checkup already pending</strong>{{ pd.token ? ': token #' + pd.token : '' }} with {{ pd.doctor?.name }} ({{ pd.date && pd.date !== todayStr ? 'from ' + pd.date + ', not finished' : pd.status === 'in-consultation' ? 'with the doctor now' : 'waiting' }}). Complete or cancel it first.
                 </div>
               }
               @if (lastInfo(); as l) {
@@ -241,6 +241,7 @@ export class ReceptionComponent implements OnInit, OnDestroy {
   queueLoaded = signal(false);
   slip = signal<Slip | null>(null);
   pendingInfo = signal<PatientSummary['pending']>(null);
+  todayStr = today();
   lastInfo = signal<PatientSummary['last']>(null);
   dups = signal<PatientRef[]>([]);
   error = signal('');
@@ -417,7 +418,7 @@ export class ReceptionComponent implements OnInit, OnDestroy {
           const body = e?.error;
           if (body?.code === 'DUPLICATE') this.dups.set(body.matches);
           else if (body?.code === 'PENDING') {
-            this.pendingInfo.set({ token: body.pending.token, status: body.pending.status, doctor: { _id: '', name: body.pending.doctor } });
+            this.pendingInfo.set({ token: body.pending.token, status: body.pending.status, date: body.pending.date, doctor: { _id: '', name: body.pending.doctor } });
             this.loadQueue();
           } else this.error.set(errorMessage(e));
         },

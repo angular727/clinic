@@ -47,6 +47,7 @@ import { LoaderComponent } from '../../shared/loader.component';
           @for (u of old(); track u._id) {
             <div class="list-group-item d-flex align-items-center gap-3 flex-wrap">
               <span class="badge bg-secondary">{{ u.date }}</span>
+              @if (u.token) { <span class="badge bg-dark fs-6">#{{ u.token }}</span> }
               <div class="flex-grow-1">
                 <span class="fw-semibold">{{ u.patient.name }}</span>
                 <span class="text-muted small ms-1">{{ u.patient.mrn }} · {{ u.doctor.name }}</span>
