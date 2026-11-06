@@ -36,6 +36,7 @@ interface Slip {
         <h3 class="mb-0">Reception — new check-in</h3>
       </div>
       @if (error()) { <div class="alert alert-danger py-2">{{ error() }}</div> }
+      @if (notice()) { <div class="alert alert-success py-2">{{ notice() }}</div> }
 
       <div class="row g-3">
         <div class="col-xl-7">
@@ -78,7 +79,7 @@ interface Slip {
               }
               @if (dups().length) {
                 <div class="alert alert-warning py-2 mt-2 mb-2">
-                  <div class="fw-semibold mb-1"><i class="bi bi-people me-1"></i>This phone number is already registered:</div>
+                  <div class="fw-semibold mb-1"><i class="bi bi-people me-1"></i>A patient with this name and phone number is already registered:</div>
                   @for (d of dups(); track d._id) {
                     <div class="d-flex justify-content-between align-items-center border-top pt-1 mt-1">
                       <span>{{ d.name }} <small class="text-muted">{{ d.mrn }}{{ d.age ? ' · ' + d.age + ' y' : '' }}</small></span>
@@ -95,7 +96,7 @@ interface Slip {
                   <div class="col-md-3 col-6"><label class="form-label mb-0">Age</label><input type="number" min="0" max="130" class="form-control" name="age" [(ngModel)]="p.age" /></div>
                   <div class="col-md-3 col-6">
                     <label class="form-label mb-0">Gender</label>
-                    <select class="form-select" name="gender" [(ngModel)]="p.gender"><option value="male">Male</option><option value="female">Female</option><option value="other">Other</option></select>
+                    <select class="form-select" name="gender" [(ngModel)]="p.gender"><option value="male">Male</option><option value="female">Female</option></select>
                   </div>
                   <div class="col-md-6"><label class="form-label mb-0">Phone</label><input class="form-control" name="phone" [(ngModel)]="p.phone" placeholder="03xx-xxxxxxx" /></div>
                   <div class="col-md-6"><label class="form-label mb-0">Father / husband name</label><input class="form-control" name="father" [(ngModel)]="p.fatherName" /></div>
@@ -151,7 +152,10 @@ interface Slip {
                 </div>
               }
             </div>
-            <div class="card-footer bg-white">
+            <div class="card-footer bg-white d-flex gap-2 flex-wrap">
+              @if (!existing) {
+                <button type="button" class="btn btn-outline-primary btn-lg" [disabled]="saving()" (click)="saveOnly()"><i class="bi bi-person-check me-1"></i>Save patient only</button>
+              }
               <button class="btn btn-primary btn-lg" [disabled]="saving() || !!pendingInfo()">@if (saving()) { <span class="spinner-border spinner-border-sm me-2"></span>Sending… } @else { <i class="bi bi-check2-circle me-1"></i>Submit &amp; send to doctor }</button>
             </div>
           </form>
@@ -178,7 +182,7 @@ interface Slip {
                 </div>
               } @empty {
                 <div class="list-group-item text-muted text-center py-4">
-                  @if (!queueLoaded()) { <span class="spinner-border spinner-border-sm me-2"></span>Loading… } @else { No patients waiting }
+                  @if (!queueLoaded()) { <div class="placeholder-glow text-start"><span class="placeholder col-8 rounded mb-2"></span><span class="placeholder col-5 rounded"></span></div> } @else { No patients waiting }
                 </div>
               }
             </div>
@@ -247,9 +251,14 @@ export class ReceptionComponent implements OnInit, OnDestroy {
   error = signal('');
   saving = signal(false);
 
-  existing = false;
+  // Backed by signals so the tab and form update when they change after an HTTP call (opened from a patient's row).
+  private existingSig = signal(false);
+  get existing() { return this.existingSig(); }
+  set existing(v: boolean) { this.existingSig.set(v); }
   more = false;
-  picked: PatientRef | null = null;
+  private pickedSig = signal<PatientRef | null>(null);
+  get picked() { return this.pickedSig(); }
+  set picked(v: PatientRef | null) { this.pickedSig.set(v); }
   p = this.emptyPatient();
   v = this.emptyVitals();
   doctorId = '';
@@ -423,6 +432,30 @@ export class ReceptionComponent implements OnInit, OnDestroy {
           } else this.error.set(errorMessage(e));
         },
       });
+  }
+
+  notice = signal('');
+
+  /** Registers the patient only (no doctor, token or fee). They can be sent to the doctor later with "Returning patient". */
+  saveOnly() {
+    this.error.set('');
+    this.notice.set('');
+    if (!this.p.name.trim()) return this.error.set('Enter the patient name');
+    const body: Record<string, unknown> = {};
+    for (const [k, val] of Object.entries(this.p)) if (val !== '' && val !== null) body[k] = val;
+    this.saving.set(true);
+    this.http.post<{ name: string; mrn: string }>(`${API}/patients`, body).subscribe({
+      next: (r) => {
+        this.saving.set(false);
+        this.notice.set(`Registered ${r.name} (${r.mrn}). To send them to the doctor, use the Returning patient tab.`);
+        setTimeout(() => this.notice.set(''), 6000);
+        this.reset();
+      },
+      error: (e) => {
+        this.saving.set(false);
+        this.error.set(errorMessage(e));
+      },
+    });
   }
 
   private reset() {

@@ -8,12 +8,11 @@ import { AuthService } from '../../core/auth.service';
 import { Doctor, QueueItem, UnfinishedVisit } from '../../core/models';
 import { silent } from '../../core/loading.interceptor';
 import { STATUS_CLASS, ageText } from '../../core/util';
-import { LoaderComponent } from '../../shared/loader.component';
 
 /** The doctor's list of pending patients. Refreshes by itself every 15 seconds. */
 @Component({
   selector: 'app-queue',
-  imports: [FormsModule, RouterLink, DecimalPipe, LoaderComponent],
+  imports: [FormsModule, RouterLink, DecimalPipe],
   template: `
     <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
       <h3 class="mb-0">Pending patients</h3>
@@ -40,26 +39,6 @@ import { LoaderComponent } from '../../shared/loader.component';
       <li class="nav-item"><button class="nav-link" [class.active]="tab() === 'done'" (click)="setTab('done')">Seen today @if (tab() === 'done') { <span class="badge bg-secondary">{{ items().length }}</span> }</button></li>
     </ul>
 
-    @if (tab() === 'pending' && old().length) {
-      <div class="card border-warning shadow-sm mb-3">
-        <div class="card-header bg-warning-subtle fw-semibold"><i class="bi bi-exclamation-triangle me-1"></i>Unfinished from earlier days ({{ old().length }})</div>
-        <div class="list-group list-group-flush">
-          @for (u of old(); track u._id) {
-            <div class="list-group-item d-flex align-items-center gap-3 flex-wrap">
-              <span class="badge bg-secondary">{{ u.date }}</span>
-              @if (u.token) { <span class="badge bg-dark fs-6">#{{ u.token }}</span> }
-              <div class="flex-grow-1">
-                <span class="fw-semibold">{{ u.patient.name }}</span>
-                <span class="text-muted small ms-1">{{ u.patient.mrn }} · {{ u.doctor.name }}</span>
-                @if (u.reason) { <div class="small text-muted">{{ u.reason }}</div> }
-              </div>
-              <button class="btn btn-sm btn-primary" (click)="finishOld(u)">Finish checkup</button>
-              <button class="btn btn-sm btn-outline-secondary" (click)="cancelOld(u)">Patient did not stay</button>
-            </div>
-          }
-        </div>
-      </div>
-    }
 
     <div class="row g-3">
       @for (q of items(); track q._id) {
@@ -104,13 +83,44 @@ import { LoaderComponent } from '../../shared/loader.component';
       } @empty {
         <div class="col-12">
           @if (!loaded()) {
-            <app-loader text="Loading patients…" />
+            <div class="row g-3">
+              @for (i of [1, 2, 3]; track i) {
+                <div class="col-12 col-md-6 col-xl-4">
+                  <div class="card border-0 shadow-sm"><div class="card-body placeholder-glow">
+                    <span class="placeholder col-7 rounded mb-2"></span><br />
+                    <span class="placeholder col-4 rounded mb-3"></span>
+                    <span class="placeholder col-12 rounded" style="height: 2rem"></span>
+                  </div></div>
+                </div>
+              }
+            </div>
           } @else {
             <div class="text-center text-muted py-5">{{ tab() === 'pending' ? 'No patients waiting. New check-ins from reception appear here automatically.' : 'No patients seen yet today.' }}</div>
           }
         </div>
       }
     </div>
+
+    @if (tab() === 'pending' && old().length) {
+      <div class="card border-warning shadow-sm mt-4">
+        <div class="card-header bg-warning-subtle fw-semibold"><i class="bi bi-exclamation-triangle me-1"></i>Unfinished from earlier days ({{ old().length }})</div>
+        <div class="list-group list-group-flush">
+          @for (u of old(); track u._id) {
+            <div class="list-group-item d-flex align-items-center gap-3 flex-wrap">
+              <span class="badge bg-secondary">{{ u.date }}</span>
+              @if (u.token) { <span class="badge bg-dark fs-6">#{{ u.token }}</span> }
+              <div class="flex-grow-1">
+                <span class="fw-semibold">{{ u.patient.name }}</span>
+                <span class="text-muted small ms-1">{{ u.patient.mrn }} · {{ u.doctor.name }}</span>
+                @if (u.reason) { <div class="small text-muted">{{ u.reason }}</div> }
+              </div>
+              <button class="btn btn-sm btn-primary" (click)="finishOld(u)">Finish checkup</button>
+              <button class="btn btn-sm btn-outline-secondary" (click)="cancelOld(u)">Patient did not stay</button>
+            </div>
+          }
+        </div>
+      </div>
+    }
 
     @if (cancelling(); as c) {
       <div class="modal d-block modal-backdrop-custom" tabindex="-1">

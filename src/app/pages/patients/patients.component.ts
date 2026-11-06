@@ -5,6 +5,7 @@ import { Router, RouterLink } from '@angular/router';
 import { API, errorMessage } from '../../core/api';
 import { HasPermissionDirective } from '../../core/has-permission.directive';
 import { Patient } from '../../core/models';
+import { AuthService } from '../../core/auth.service';
 import { LoadingService } from '../../core/loading.service';
 import { ageText } from '../../core/util';
 
@@ -60,6 +61,9 @@ const BLOOD = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
                 <td>{{ p.city || '—' }}</td>
                 <td>{{ p.createdAt.slice(0, 10) }}</td>
                 <td class="text-end text-nowrap">
+                  @if (!archived && canCheckIn()) {
+                    <a class="btn btn-sm btn-primary me-1" routerLink="/reception" [queryParams]="{ patientId: p._id }" title="Send this patient to the doctor (adds to Pending patients)"><i class="bi bi-box-arrow-in-right me-1"></i>Check-in</a>
+                  }
                   <a class="btn btn-sm btn-outline-primary me-1" [routerLink]="['/patients', p._id]" title="See all visits, prescriptions and bills of this patient"><i class="bi bi-clock-history me-1"></i>Visit history</a>
                   @if (archived) {
                     <button *hasPermission="'patients.delete'" class="btn btn-sm btn-outline-success" (click)="restore(p)">Restore</button>
@@ -70,7 +74,7 @@ const BLOOD = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
                 </td>
               </tr>
             } @empty {
-              <tr><td colspan="7" class="text-center text-muted py-4">@if (loading.busy()) { <span class="spinner-border spinner-border-sm me-2"></span>Loading patients… } @else { {{ q ? 'No patients match your search' : 'No patients yet' }} }</td></tr>
+              @if (loading.busy()) { @for (i of [1, 2, 3, 4, 5]; track i) { <tr class="placeholder-glow"><td colspan="7" class="py-3"><span class="placeholder col-12 rounded" style="height: 1.1rem"></span></td></tr> } } @else { <tr><td colspan="7" class="text-center text-muted py-4">{{ q ? 'No patients match your search' : 'No patients yet' }}</td></tr> }
             }
           </tbody>
         </table>
@@ -97,7 +101,7 @@ const BLOOD = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
                 <div class="col-md-3">
                   <label class="form-label">Gender</label>
                   <select class="form-select" name="gender" [(ngModel)]="form.gender">
-                    <option value="male">Male</option><option value="female">Female</option><option value="other">Other</option>
+                    <option value="male">Male</option><option value="female">Female</option>
                   </select>
                 </div>
                 <div class="col-md-3"><label class="form-label">Age (years)</label><input type="number" min="0" max="130" class="form-control" name="age" [(ngModel)]="form.age" /></div>
@@ -120,7 +124,7 @@ const BLOOD = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
                 <div class="col-12"><label class="form-label">Notes</label><textarea class="form-control" rows="2" name="notes" [(ngModel)]="form.notes"></textarea></div>
               </div>
             </div>
-            <div class="modal-footer"><button type="button" class="btn btn-light" (click)="showForm.set(false)">Cancel</button><button class="btn btn-primary" [disabled]="saving()">{{ editingId ? 'Save changes' : 'Register patient' }}</button></div>
+            <div class="modal-footer"><button type="button" class="btn btn-light" (click)="showForm.set(false)">Cancel</button><button class="btn btn-primary" [disabled]="saving()">{{ editingId ? 'Save changes' : 'Register patient' }}</button>@if (!editingId && canCheckIn()) { <button type="button" class="btn btn-success" [disabled]="saving()" (click)="save(true)"><i class="bi bi-box-arrow-in-right me-1"></i>Register &amp; check-in</button> }</div>
           </form>
         </div>
       </div>
@@ -129,6 +133,8 @@ const BLOOD = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 })
 export class PatientsComponent implements OnInit {
   private http = inject(HttpClient);
+  private auth = inject(AuthService);
+  canCheckIn = () => this.auth.hasModule('reception') && this.auth.has('reception.create');
   loading = inject(LoadingService);
   private router = inject(Router);
 
@@ -204,7 +210,8 @@ export class PatientsComponent implements OnInit {
     };
   }
 
-  save() {
+  /** `thenCheckIn`: after registering a new patient, go straight to the Reception form to send them to the doctor. */
+  save(thenCheckIn = false) {
     if (!this.form.name.trim()) {
       this.formError.set('Patient name is required');
       return;
@@ -218,6 +225,10 @@ export class PatientsComponent implements OnInit {
       next: (p) => {
         this.saving.set(false);
         this.showForm.set(false);
+        if (!this.editingId && thenCheckIn === true) {
+          this.router.navigate(['/reception'], { queryParams: { patientId: p._id } });
+          return;
+        }
         if (!this.editingId) {
           this.notice.set(`Registered ${p.name} (${p.mrn})`);
           setTimeout(() => this.notice.set(''), 4000);

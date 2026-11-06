@@ -211,7 +211,7 @@ export interface Invoice {
   total: number;
   paid: number;
   balance: number;
-  status: 'unpaid' | 'partial' | 'paid';
+  status: 'unpaid' | 'partial' | 'paid' | 'refunded' | 'cancelled';
   payments: Payment[];
   notes?: string;
 }
@@ -239,5 +239,5 @@ export interface QueueItem {
   doctor: { _id: string; name: string };
   visitId?: string;
   vitals?: Vitals;
-  invoice: { invoiceNo: string; total: number; paid: number; balance: number; status: 'unpaid' | 'partial' | 'paid' } | null;
+  invoice: { invoiceNo: string; total: number; paid: number; balance: number; status: 'unpaid' | 'partial' | 'paid' | 'refunded' | 'cancelled' } | null;
 }

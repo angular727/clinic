@@ -1,12 +1,25 @@
 import { Component, input } from '@angular/core';
 
-/** A small spinner with text. Usage: <app-loader /> or <app-loader text="Loading patients…" />. */
+/** Skeleton placeholder for a page or card that is still loading. Usage: <app-loader /> (text is read by screen readers). */
 @Component({
   selector: 'app-loader',
   template: `
-    <div class="d-flex align-items-center justify-content-center gap-2 text-muted py-4">
-      <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-      <span>{{ text() }}</span>
+    <div class="placeholder-glow" role="status" [attr.aria-label]="text()">
+      <div class="card border-0 shadow-sm mb-3">
+        <div class="card-body">
+          <span class="placeholder col-4 rounded mb-3" style="height: 1.6rem"></span><br />
+          <span class="placeholder col-9 rounded mb-2"></span><br />
+          <span class="placeholder col-7 rounded mb-2"></span><br />
+          <span class="placeholder col-8 rounded"></span>
+        </div>
+      </div>
+      <div class="card border-0 shadow-sm">
+        <div class="card-body">
+          <span class="placeholder col-12 rounded mb-2" style="height: 1.1rem"></span><br />
+          <span class="placeholder col-12 rounded mb-2" style="height: 1.1rem"></span><br />
+          <span class="placeholder col-12 rounded" style="height: 1.1rem"></span>
+        </div>
+      </div>
     </div>
   `,
 })

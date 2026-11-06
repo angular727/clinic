@@ -318,7 +318,7 @@ interface Summary {
                     <td class="num" [class.text-danger]="v.due > 0" [class.fw-semibold]="v.due > 0">{{ v.due | number: '1.0-0' }}</td>
                   </tr>
                 } @empty {
-                  <tr><td colspan="12"><div class="empty">@if (loading.busy()) { <span class="spinner-border spinner-border-sm me-2"></span>Loading report… } @else { <i class="bi bi-clipboard2-pulse"></i>No checkups in this period }</div></td></tr>
+                  @if (loading.busy()) { @for (i of [1, 2, 3, 4, 5]; track i) { <tr class="placeholder-glow"><td colspan="12" class="py-3"><span class="placeholder col-12 rounded" style="height: 1.1rem"></span></td></tr> } } @else { <tr><td colspan="12"><div class="empty"><i class="bi bi-clipboard2-pulse"></i>No checkups in this period</div></td></tr> }
                 }
               </tbody>
             </table>

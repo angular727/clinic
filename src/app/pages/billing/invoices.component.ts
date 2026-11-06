@@ -33,7 +33,7 @@ import { STATUS_CLASS } from '../../core/util';
         <div>
           <label class="form-label small mb-0">Status</label>
           <select class="form-select form-select-sm" [ngModel]="status" (ngModelChange)="status = $event; load()">
-            <option value="">All</option><option value="due">Has balance</option><option value="unpaid">Unpaid</option><option value="partial">Partial</option><option value="paid">Paid</option>
+            <option value="">All</option><option value="due">Has balance</option><option value="unpaid">Unpaid</option><option value="partial">Partial</option><option value="paid">Paid</option><option value="refunded">Refunded</option>
           </select>
         </div>
         <div><label class="form-label small mb-0">From</label><input type="date" class="form-control form-control-sm" [ngModel]="from" (ngModelChange)="from = $event; load()" /></div>
@@ -59,7 +59,7 @@ import { STATUS_CLASS } from '../../core/util';
                 <td><span class="badge" [class]="badge(i.status)">{{ i.status }}</span></td>
                 <td class="text-end"><a class="btn btn-sm btn-outline-primary" [routerLink]="['/billing', i._id]">Open</a></td>
               </tr>
-            } @empty { <tr><td colspan="9" class="text-center text-muted py-4">@if (loading.busy()) { <span class="spinner-border spinner-border-sm me-2"></span>Loading invoices… } @else { No invoices found }</td></tr> }
+            } @empty { @if (loading.busy()) { @for (i of [1, 2, 3, 4, 5]; track i) { <tr class="placeholder-glow"><td colspan="9" class="py-3"><span class="placeholder col-12 rounded" style="height: 1.1rem"></span></td></tr> } } @else { <tr><td colspan="9" class="text-center text-muted py-4">No invoices found</td></tr> } }
           </tbody>
         </table>
       </div>

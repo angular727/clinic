@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { API, errorMessage } from '../../core/api';
 import { AuthService } from '../../core/auth.service';
+import { LoadingService } from '../../core/loading.service';
 import { HasPermissionDirective } from '../../core/has-permission.directive';
 import { Doctor, PatientRef, Visit } from '../../core/models';
 import { STATUS_CLASS, ageText, today } from '../../core/util';
@@ -80,7 +81,7 @@ import { PatientPickerComponent } from '../../shared/patient-picker.component';
                   }
                 </td>
               </tr>
-            } @empty { <tr><td colspan="7" class="text-center text-muted py-4">No visits found</td></tr> }
+            } @empty { @if (loading.busy()) { @for (i of [1, 2, 3, 4, 5]; track i) { <tr class="placeholder-glow"><td colspan="7" class="py-3"><span class="placeholder col-12 rounded" style="height: 1.1rem"></span></td></tr> } } @else { <tr><td colspan="7" class="text-center text-muted py-4">No visits found</td></tr> } }
           </tbody>
         </table>
       </div>
@@ -111,6 +112,7 @@ import { PatientPickerComponent } from '../../shared/patient-picker.component';
 })
 export class VisitsComponent implements OnInit {
   private http = inject(HttpClient);
+  loading = inject(LoadingService);
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private auth = inject(AuthService);

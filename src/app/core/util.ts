@@ -60,6 +60,7 @@ export const STATUS_CLASS: Record<string, string> = {
   unpaid: 'bg-danger',
   partial: 'bg-warning text-dark',
   paid: 'bg-success',
+  refunded: 'bg-secondary',
 };
 
 export const PAY_METHODS = ['cash', 'card', 'online', 'insurance', 'other'];

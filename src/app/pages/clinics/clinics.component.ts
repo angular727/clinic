@@ -77,7 +77,7 @@ import { LoadingService } from '../../core/loading.service';
                 </td>
               </tr>
             } @empty {
-              <tr><td colspan="8" class="text-center text-muted py-4">@if (loading.busy()) { <span class="spinner-border spinner-border-sm me-2"></span>Loading clinics… } @else { No clinics yet }</td></tr>
+              @if (loading.busy()) { @for (i of [1, 2, 3, 4, 5]; track i) { <tr class="placeholder-glow"><td colspan="8" class="py-3"><span class="placeholder col-12 rounded" style="height: 1.1rem"></span></td></tr> } } @else { <tr><td colspan="8" class="text-center text-muted py-4">No clinics yet</td></tr> }
             }
           </tbody>
         </table>
